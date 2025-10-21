@@ -46,6 +46,10 @@ struct ChatListView: View {
                             Label("New Group", systemImage: "person.3")
                         }
 
+                        Button(action: openAccount) {
+                            Label("Account", systemImage: "person.circle")
+                        }
+
                         Divider()
 
                         Button(role: .destructive, action: {
@@ -98,6 +102,9 @@ struct ChatListView: View {
                         navigateToConversation(conversation)
                     }
                 )
+            }
+            .navigationDestination(for: AccountRoute.self) { _ in
+                AccountView()
             }
             .onAppear {
                 Task { @MainActor in
@@ -156,6 +163,10 @@ struct ChatListView: View {
         navigationPath.append(NewGroupRoute())
     }
 
+    private func openAccount() {
+        navigationPath.append(AccountRoute())
+    }
+
     @MainActor
     private func navigateToConversation(_ conversation: Conversation) {
         viewModel.upsertConversation(conversation)
@@ -178,6 +189,7 @@ struct ChatListView: View {
 
 private struct NewChatRoute: Hashable {}
 private struct NewGroupRoute: Hashable {}
+private struct AccountRoute: Hashable {}
 
 private final class PreviewChatService: ChatService {
     func createConversation(withUserIds userIds: [String], isGroup: Bool, groupName: String?, participantNames: [String : String]) async throws -> Conversation {
@@ -236,4 +248,6 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func logout() async throws { }
 
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
+    
+    func deleteAccount() async throws { }
 }

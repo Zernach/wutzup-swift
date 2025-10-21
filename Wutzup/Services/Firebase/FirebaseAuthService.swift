@@ -111,6 +111,23 @@ class FirebaseAuthService: AuthenticationService, ObservableObject {
         }
     }
     
+    func deleteAccount() async throws {
+        guard let firebaseUser = auth.currentUser else {
+            throw NSError(domain: "FirebaseAuthService", code: -1, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])
+        }
+        
+        let userId = firebaseUser.uid
+        
+        // Delete user document from Firestore
+        try await db.collection("users").document(userId).delete()
+        
+        // Delete Firebase Auth user
+        try await firebaseUser.delete()
+        
+        // Clear auth state
+        authStateSubject.send(nil)
+    }
+    
     private func ensureUserDocument(for authUser: FirebaseAuth.User, emailOverride: String? = nil, displayNameOverride: String? = nil) async throws -> User {
         let userRef = db.collection("users").document(authUser.uid)
         let snapshot = try await userRef.getDocument()

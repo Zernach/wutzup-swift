@@ -16,5 +16,6 @@ protocol AuthenticationService: AnyObject {
     func login(email: String, password: String) async throws -> User
     func logout() async throws
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws
+    func deleteAccount() async throws
 }
 

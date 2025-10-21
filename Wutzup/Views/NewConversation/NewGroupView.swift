@@ -248,6 +248,8 @@ private final class PreviewAuthService: AuthenticationService {
     func logout() async throws {}
     
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws {}
+    
+    func deleteAccount() async throws {}
 }
 
 private final class PreviewChatService: ChatService {

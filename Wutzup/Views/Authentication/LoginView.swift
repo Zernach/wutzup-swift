@@ -151,4 +151,6 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func logout() async throws { }
     
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
+    
+    func deleteAccount() async throws { }
 }
