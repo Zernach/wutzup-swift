@@ -2,23 +2,23 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // ========================================
     // Helper Functions
     // ========================================
-    
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
+
     function isParticipant(participantIds) {
       return isAuthenticated() && request.auth.uid in participantIds;
     }
-    
+
     // ========================================
     // Users Collection
     // ========================================
@@ -32,36 +32,36 @@ service cloud.firestore {
     //   createdAt: timestamp
     //   lastSeen?: timestamp
     // }
-    
+
     match /users/{userId} {
       // Anyone authenticated can read user profiles (for chat participants)
       allow read: if isAuthenticated();
-      
+
       // Only the user can create their own profile
-      allow create: if isAuthenticated() 
+      allow create: if isAuthenticated()
         && isOwner(userId)
         && request.resource.data.keys().hasAll(['id', 'email', 'displayName', 'createdAt'])
         && request.resource.data.id == userId
         && request.resource.data.email is string
         && request.resource.data.displayName is string;
-      
+
       // Only the user can update their own profile
-      allow update: if isAuthenticated() 
+      allow update: if isAuthenticated()
         && isOwner(userId)
         && request.resource.data.id == resource.data.id  // Can't change ID
         && request.resource.data.email == resource.data.email;  // Can't change email
-      
+
       // Users cannot delete their profiles (handle via Cloud Functions)
       allow delete: if false;
     }
-    
+
     // ========================================
     // Conversations Collection
     // ========================================
     // Schema:
     // {
-    //   id: string (document ID)
     //   participantIds: string[] (array of user IDs)
+    //   participantNames: map<string, string> (userId -> displayName)
     //   isGroup: boolean
     //   groupName?: string
     //   groupImageUrl?: string
@@ -69,31 +69,32 @@ service cloud.firestore {
     //   lastMessageTimestamp?: timestamp
     //   createdAt: timestamp
     //   updatedAt: timestamp
+    //   unreadCount: number
     // }
-    
+
     match /conversations/{conversationId} {
       // Only participants can read the conversation
-      allow read: if isAuthenticated() 
+      allow read: if isAuthenticated()
         && request.auth.uid in resource.data.participantIds;
-      
+
       // Authenticated users can create conversations
       allow create: if isAuthenticated()
         && request.auth.uid in request.resource.data.participantIds
-        && request.resource.data.keys().hasAll(['id', 'participantIds', 'isGroup', 'createdAt'])
-        && request.resource.data.id == conversationId
+        && request.resource.data.keys().hasAll(['participantIds', 'participantNames', 'isGroup', 'createdAt', 'updatedAt', 'unreadCount'])
         && request.resource.data.participantIds is list
         && request.resource.data.participantIds.size() >= 2
-        && request.resource.data.isGroup is bool;
-      
+        && request.resource.data.participantNames is map
+        && request.resource.data.isGroup is bool
+        && request.resource.data.unreadCount is int;
+
       // Only participants can update conversation metadata
       allow update: if isAuthenticated()
         && request.auth.uid in resource.data.participantIds
-        && request.resource.data.id == resource.data.id
         && request.resource.data.participantIds == resource.data.participantIds;  // Can't change participants
-      
+
       // Conversations cannot be deleted directly (handle via Cloud Functions)
       allow delete: if false;
-      
+
       // ========================================
       // Messages Subcollection
       // ========================================
@@ -108,12 +109,12 @@ service cloud.firestore {
       //   readBy: string[] (array of user IDs)
       //   deliveredTo: string[] (array of user IDs)
       // }
-      
+
       match /messages/{messageId} {
         // Only conversation participants can read messages
-        allow read: if isAuthenticated() 
+        allow read: if isAuthenticated()
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
-        
+
         // Only participants can create messages (must be sender)
         allow create: if isAuthenticated()
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
@@ -123,7 +124,7 @@ service cloud.firestore {
           && request.resource.data.content is string
           && request.resource.data.content.size() > 0
           && request.resource.data.content.size() <= 10000;  // Max 10KB message
-        
+
         // Only participants can update messages (for read receipts)
         allow update: if isAuthenticated()
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
@@ -131,12 +132,12 @@ service cloud.firestore {
           && request.resource.data.senderId == resource.data.senderId
           && request.resource.data.content == resource.data.content
           && request.resource.data.timestamp == resource.data.timestamp;
-        
+
         // Messages cannot be deleted (MVP - may add later)
         allow delete: if false;
       }
     }
-    
+
     // ========================================
     // Presence Collection
     // ========================================
@@ -146,15 +147,15 @@ service cloud.firestore {
     //   lastSeen: timestamp
     //   typing: map<conversationId, boolean>
     // }
-    
+
     match /presence/{userId} {
       // Anyone authenticated can read presence
       allow read: if isAuthenticated();
-      
+
       // Only the user can write their own presence
       allow write: if isAuthenticated() && isOwner(userId);
     }
-    
+
     // ========================================
     // Typing Collection (Ephemeral)
     // ========================================
@@ -162,7 +163,7 @@ service cloud.firestore {
     // {
     //   users: map<userId, timestamp>
     // }
-    
+
     match /typing/{conversationId} {
       // Only conversation participants can read/write typing indicators
       allow read: if isAuthenticated();
