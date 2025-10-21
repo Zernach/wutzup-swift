@@ -71,6 +71,7 @@ website/
 
 - `/` - Home page with app introduction
 - `/privacy-policy` - Privacy policy page
+- `/support` - Support page with contact information
 
 ## SEO
 

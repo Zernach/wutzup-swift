@@ -22,6 +22,10 @@ export default function HomePage() {
                     </p>
 
                     <div className="footer">
+                        <Link to="/support" className="link">
+                            Support
+                        </Link>
+                        <span className="footer-separator"> • </span>
                         <Link to="/privacy-policy" className="link">
                             Privacy Policy
                         </Link>

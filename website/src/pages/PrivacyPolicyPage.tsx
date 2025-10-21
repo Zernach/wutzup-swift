@@ -90,7 +90,11 @@ export default function PrivacyPolicyPage() {
 
                     <div className="privacy-footer">
                         <Link to="/" className="link">
-                            Back to Home
+                            Home
+                        </Link>
+                        <span className="separator">•</span>
+                        <Link to="/support" className="link">
+                            Support
                         </Link>
                     </div>
 
