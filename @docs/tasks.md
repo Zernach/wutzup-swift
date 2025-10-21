@@ -86,7 +86,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 - [🔴 S] Create new Xcode project
   - iOS App, SwiftUI
   - Name: Wutzup
-  - Bundle ID: com.yourcompany.wutzup
+  - Bundle ID: com.archlife.wutzup
   - Minimum iOS: 16.0 (for SwiftData)
 
 - [🔴 M] Setup project structure

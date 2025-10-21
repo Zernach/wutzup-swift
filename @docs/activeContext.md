@@ -1,9 +1,9 @@
 # Active Context: Wutzup
 
 ## Current State
-**Status**: Firestore Database Schema Complete ✅  
+**Status**: Firebase Backend Deployed ✅  
 **Date**: October 21, 2025  
-**Phase**: Phase 0 Complete → Phase 1 Starting (Firebase Setup)
+**Phase**: Phase 1 (Firebase Setup) 80% Complete → Ready for iOS Development
 
 ## 🔥 BREAKING CHANGE: Firebase Architecture
 
@@ -71,56 +71,68 @@
 ---
 
 ## Current Focus
-**Just Completed**: Complete Firestore database schema with security rules, indexes, Cloud Functions, and documentation  
-**Next Immediate Step**: Deploy Firestore schema to Firebase project
+**Just Completed**: 🎉 **Firebase Backend Fully Deployed & Seeded!**
+- ✅ Firestore security rules deployed
+- ✅ Firestore composite indexes deployed  
+- ✅ Cloud Functions deployed (on_message_created, on_conversation_created, on_presence_updated)
+- ✅ Firebase project upgraded to Blaze plan
+- ✅ All Firebase APIs enabled
+- ✅ **Database seeded with test data** (4 users, 3 conversations, 7 messages)
 
-### Ready to Start
-We're ready to build the MVP:
+**Next Immediate Step**: Create Xcode project and integrate Firebase SDK
+
+### Ready to Start iOS Development
+Backend is complete and deployed! Now ready to build the iOS app:
 - All planning documents complete ✅
 - Firebase architecture decided ✅
+- **Firebase backend deployed** ✅
+- Firestore database live with security rules ✅
+- Cloud Functions operational ✅
 - Technology stack chosen (Firebase + SwiftUI + SwiftData) ✅
 - Tasks broken down ✅
-- **Much simpler development path** ✅
 
 ---
 
 ## Next Steps
 
-### Immediate (Today - 1 Hour)
-1. **Create Firebase project** (15 min)
-   - Go to console.firebase.google.com
-   - Create project: "Wutzup"
-   - Enable Auth, Firestore, Storage, FCM
-
-2. **Setup Firebase CLI** (15 min)
-   ```bash
-   npm install -g firebase-tools
-   firebase login
-   firebase init
-   ```
-
-3. **Create Xcode project** (30 min)
+### Immediate (Today - 2-3 Hours)
+1. **Create Xcode project** (30 min)
    - New iOS App (SwiftUI)
    - iOS 16+ minimum
-   - Add Firebase SDK via SPM
+   - Bundle ID: `com.archlife.wutzup` (or your preference)
+   - Project name: `Wutzup`
+
+2. **Add Firebase SDK via SPM** (15 min)
+   - File → Add Package Dependencies
+   - Add: `https://github.com/firebase/firebase-ios-sdk`
+   - Select: FirebaseAuth, FirebaseFirestore, FirebaseStorage, FirebaseMessaging
+
+3. **Download GoogleService-Info.plist** (15 min)
+   - Firebase Console → Project Settings → iOS app
+   - Register iOS app with bundle ID
    - Download GoogleService-Info.plist
+   - Add to Xcode project
 
-### This Week (Phase 1 - 2-3 Days)
-1. **Firebase Setup** (Day 1)
-   - Configure Firestore collections
-   - Write security rules
-   - Setup emulator suite
-   - Test Firestore operations
+4. **Setup Firebase initialization** (30 min)
+   - Configure FirebaseApp in App struct
+   - Enable Firestore offline persistence
+   - Test connection to Firestore
 
-2. **iOS Project Setup** (Day 2)
-   - Project structure
-   - SwiftData models
-   - Firebase initialization
+5. **Create SwiftData models** (1 hour)
+   - MessageModel (local cache)
+   - ConversationModel (local cache)
+   - UserModel (local cache)
+
+### This Week (Phase 1-2)
+1. **Complete iOS Setup** (Rest of Day 1)
+   - Project folder structure
+   - Firebase service layer
    - Basic UI scaffolding
 
-3. **Authentication** (Day 3)
-   - Firebase Auth integration
+2. **Authentication** (Day 2-3)
+   - FirebaseAuthService
    - Login/Register UI
+   - Auth state management
    - Test user creation
 
 ### Next Week (Phase 2-3)
@@ -196,13 +208,21 @@ We're ready to build the MVP:
 ---
 
 ## Current Blockers
-**None** - Documentation complete, Firebase architecture clear, ready to code!
+**None** - Firebase backend deployed, database operational, ready for iOS development!
 
 ---
 
 ## Recent Learnings
 
-### Firebase Benefits (New!)
+### Firebase Deployment (Latest!)
+1. **Python virtual environments** must be properly configured for Cloud Functions
+2. **Single-field indexes** are automatic in Firestore - only define composite indexes
+3. **Blaze plan required** for Cloud Functions deployment (production)
+4. **Firebase CLI** handles all deployment seamlessly with `firebase deploy`
+5. **Cloud Functions 2nd Gen** automatically created (Python 3.13 support)
+6. **All APIs auto-enabled** by Firebase CLI (Cloud Build, Artifact Registry, etc.)
+
+### Firebase Benefits
 1. Firestore offline persistence is automatic - no manual queue needed
 2. Real-time listeners eliminate all WebSocket complexity
 3. Firebase Auth removes entire auth system (weeks of work)
