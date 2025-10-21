@@ -132,10 +132,14 @@ def _send_message_notification(
         if len(message_content) > 100:
             preview += "..."
         
+        # Create title and body
+        title = f"Wutzup from {sender_name}"
+        body = preview
+        
         # Create notification
         notification = messaging.Notification(
-            title=sender_name,
-            body=preview
+            title=title,
+            body=body  # For Android compatibility
         )
         
         # Create message
@@ -150,6 +154,10 @@ def _send_message_notification(
             apns=messaging.APNSConfig(
                 payload=messaging.APNSPayload(
                     aps=messaging.Aps(
+                        alert=messaging.ApsAlert(
+                            title=title,
+                            body=body
+                        ),
                         badge=1,  # Increment badge
                         sound="default",
                         content_available=True
