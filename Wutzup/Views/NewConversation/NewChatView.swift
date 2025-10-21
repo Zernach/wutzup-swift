@@ -6,20 +6,22 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct NewChatView: View {
     @StateObject private var userPickerViewModel: UserPickerViewModel
-    
-    let createOrFetchConversation: (String) async -> Conversation?
+
+    // Pass User directly - mark as @MainActor to avoid async boundary corruption
+    let createOrFetchConversation: @MainActor (User) async -> Conversation?
     let onConversationCreated: (Conversation) -> Void
-    
+
     @State private var isCreatingConversation = false
     @State private var creationErrorMessage: String?
     @State private var showErrorAlert = false
-    
+
     init(userService: UserService,
          currentUserId: String?,
-         createOrFetchConversation: @escaping (String) async -> Conversation?,
+         createOrFetchConversation: @escaping @MainActor (User) async -> Conversation?,
          onConversationCreated: @escaping (Conversation) -> Void) {
         _userPickerViewModel = StateObject(
             wrappedValue: UserPickerViewModel(
@@ -30,9 +32,12 @@ struct NewChatView: View {
         self.createOrFetchConversation = createOrFetchConversation
         self.onConversationCreated = onConversationCreated
     }
-    
+
     var body: some View {
         ZStack {
+            AppConstants.Colors.background
+                .ignoresSafeArea()
+
             List {
                 if userPickerViewModel.filteredUsers.isEmpty {
                     emptyState
@@ -45,9 +50,10 @@ struct NewChatView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(user.displayName)
                                         .font(.headline)
+                                        .foregroundColor(AppConstants.Colors.textPrimary)
                                     Text(user.email)
                                         .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(AppConstants.Colors.textSecondary)
                                 }
                                 Spacer()
                             }
@@ -56,19 +62,35 @@ struct NewChatView: View {
                         .buttonStyle(.plain)
                         .contentShape(Rectangle())
                         .disabled(isCreatingConversation)
+                        .listRowBackground(AppConstants.Colors.surface)
+                        .listRowSeparatorTint(AppConstants.Colors.border)
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            
+            .scrollContentBackground(.hidden)
+            .listStyle(.plain)
+            .background(AppConstants.Colors.background)
+
             if isCreatingConversation {
                 ProgressView("Starting chat...")
+                    .tint(AppConstants.Colors.accent)
                     .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(AppConstants.Colors.surface.opacity(0.95))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppConstants.Colors.border, lineWidth: 1)
+                    )
             } else if userPickerViewModel.isLoading {
                 ProgressView("Loading users...")
+                    .tint(AppConstants.Colors.accent)
                     .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(AppConstants.Colors.surface.opacity(0.95))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppConstants.Colors.border, lineWidth: 1)
+                    )
             }
         }
         .navigationTitle("New Chat")
@@ -82,7 +104,7 @@ struct NewChatView: View {
             Text(message)
         }
     }
-    
+
     @ViewBuilder
     private var emptyState: some View {
         if userPickerViewModel.isLoading {
@@ -91,12 +113,14 @@ struct NewChatView: View {
             VStack(spacing: 12) {
                 Image(systemName: "person.crop.circle.badge.exclam")
                     .font(.system(size: 48))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppConstants.Colors.mutedIcon)
                 Text("No other users found")
                     .font(.headline)
+                    .foregroundColor(AppConstants.Colors.textPrimary)
                 Text("Invite teammates so you can start chatting.")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppConstants.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 40)
@@ -104,35 +128,51 @@ struct NewChatView: View {
             VStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 48))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppConstants.Colors.mutedIcon)
                 Text("No matches")
                     .font(.headline)
+                    .foregroundColor(AppConstants.Colors.textPrimary)
                 Text("Try a different name or email.")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppConstants.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 40)
         }
     }
-    
+
     private func handleUserSelection(_ user: User) {
         guard !isCreatingConversation else { return }
-        
+
+        // DEBUG: Log the user being selected
+        print("🔍 [DEBUG] NewChatView.handleUserSelection - user selected")
+        print("🔍 [DEBUG] User object:")
+        print("🔍 [DEBUG]   - id:", user.id)
+        print("🔍 [DEBUG]   - displayName:", user.displayName)
+        print("🔍 [DEBUG]   - email:", user.email)
+
         isCreatingConversation = true
         creationErrorMessage = nil
-        
-        Task {
-            let conversation = await createOrFetchConversation(user.id)
-            await MainActor.run {
-                isCreatingConversation = false
-                
-                if let conversation = conversation {
-                    onConversationCreated(conversation)
-                } else {
-                    creationErrorMessage = "Please try again."
-                    showErrorAlert = true
-                }
+
+        Task { @MainActor in
+            print("🔍 [DEBUG] Inside @MainActor Task - about to call createOrFetchConversation")
+            print("🔍 [DEBUG] Inside Task - user.id:", user.id)
+            print("🔍 [DEBUG] Inside Task - user.displayName:", user.displayName)
+            print("🔍 [DEBUG] Inside Task - user.email:", user.email)
+
+            // Pass User object directly - @MainActor should prevent corruption
+            let conversation = await createOrFetchConversation(user)
+
+            print("🔍 [DEBUG] After createOrFetchConversation call")
+
+            isCreatingConversation = false
+
+            if let conversation = conversation {
+                onConversationCreated(conversation)
+            } else {
+                creationErrorMessage = "Please try again."
+                showErrorAlert = true
             }
         }
     }
@@ -143,10 +183,10 @@ struct NewChatView: View {
         NewChatView(
             userService: PreviewUserService(),
             currentUserId: "current",
-            createOrFetchConversation: { _ in
+            createOrFetchConversation: { @MainActor user in
                 Conversation(
-                    participantIds: ["current", "other"],
-                    participantNames: ["current": "Me", "other": "Someone"],
+                    participantIds: ["current", user.id],
+                    participantNames: ["current": "Me", user.id: user.displayName],
                     isGroup: false
                 )
             },

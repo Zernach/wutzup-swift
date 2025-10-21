@@ -16,7 +16,18 @@ struct User: Identifiable, Codable, Hashable {
     var fcmToken: String?
     var createdAt: Date
     var lastSeen: Date?
-    
+
+    // Explicit CodingKeys to ensure proper encoding/decoding
+    enum CodingKeys: String, CodingKey {
+        case id
+        case email
+        case displayName
+        case profileImageUrl
+        case fcmToken
+        case createdAt
+        case lastSeen
+    }
+
     init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil) {
         self.id = id
         self.email = email
@@ -25,26 +36,42 @@ struct User: Identifiable, Codable, Hashable {
         self.fcmToken = fcmToken
         self.createdAt = createdAt
         self.lastSeen = lastSeen
+
+        // DEBUG: Validate on creation
+        if id.isEmpty {
+            print("⚠️ [WARNING] User created with EMPTY ID! displayName:", displayName, "email:", email)
+        }
     }
-    
+
     // Initialize from Firestore document
     init?(from document: DocumentSnapshot) {
         guard let data = document.data(),
               let email = data["email"] as? String,
               let displayName = data["displayName"] as? String else {
+            print("❌ [ERROR] User.init: Missing required fields in document \(document.documentID)")
             return nil
         }
-        
+
+        // Determine the ID to use
+        let finalId: String
         if let storedId = data["id"] as? String, !storedId.isEmpty {
-            self.id = storedId
+            finalId = storedId
         } else {
-            self.id = document.documentID
+            finalId = document.documentID
         }
+
+        // Validate the ID is not empty
+        guard !finalId.isEmpty else {
+            print("❌ [ERROR] User.init: Both storedId and documentID are empty for user \(displayName)")
+            return nil
+        }
+
+        self.id = finalId
         self.email = email
         self.displayName = displayName
         self.profileImageUrl = data["profileImageUrl"] as? String
         self.fcmToken = data["fcmToken"] as? String
-        
+
         if let createdAtTimestamp = data["createdAt"] as? Timestamp {
             self.createdAt = createdAtTimestamp.dateValue()
         } else if let createdAtDate = data["createdAt"] as? Date {
@@ -52,14 +79,14 @@ struct User: Identifiable, Codable, Hashable {
         } else {
             self.createdAt = Date()
         }
-        
+
         if let lastSeenTimestamp = data["lastSeen"] as? Timestamp {
             self.lastSeen = lastSeenTimestamp.dateValue()
         } else if let lastSeenDate = data["lastSeen"] as? Date {
             self.lastSeen = lastSeenDate
         }
     }
-    
+
     // Convert to Firestore data
     var firestoreData: [String: Any] {
         var data: [String: Any] = [
@@ -68,7 +95,7 @@ struct User: Identifiable, Codable, Hashable {
             "displayName": displayName,
             "createdAt": Timestamp(date: createdAt)
         ]
-        
+
         if let profileImageUrl = profileImageUrl {
             data["profileImageUrl"] = profileImageUrl
         }
@@ -78,7 +105,14 @@ struct User: Identifiable, Codable, Hashable {
         if let lastSeen = lastSeen {
             data["lastSeen"] = Timestamp(date: lastSeen)
         }
-        
+
         return data
+    }
+}
+
+// MARK: - Debug Description
+extension User: CustomDebugStringConvertible {
+    var debugDescription: String {
+        return "User(id: \"\(id)\", displayName: \"\(displayName)\", email: \"\(email)\")"
     }
 }

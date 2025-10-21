@@ -18,11 +18,17 @@ struct MessageInputView: View {
             // Text Input
             TextField("Message", text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
-                .padding(10)
-                .background(Color(UIColor.systemGray6))
+                .padding(12)
+                .background(AppConstants.Colors.surfaceSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(AppConstants.Colors.border, lineWidth: 1)
+                )
                 .cornerRadius(20)
+                .foregroundColor(AppConstants.Colors.textPrimary)
+                .tint(AppConstants.Colors.accent)
                 .lineLimit(1...5)
-                .onChange(of: text) { _ in
+                .onChange(of: text) {
                     onTextChanged()
                 }
             
@@ -34,7 +40,7 @@ struct MessageInputView: View {
             }) {
                 if isSending {
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle())
+                        .tint(AppConstants.Colors.textPrimary)
                 } else {
                     Image(systemName: "arrow.up.circle.fill")
                         .resizable()
@@ -42,8 +48,8 @@ struct MessageInputView: View {
                         .frame(width: 32, height: 32)
                         .foregroundColor(
                             text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                ? .gray
-                                : .blue
+                                ? AppConstants.Colors.mutedIcon
+                                : AppConstants.Colors.accent
                         )
                 }
             }
@@ -51,7 +57,13 @@ struct MessageInputView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-        .background(Color(UIColor.systemBackground))
+        .background(AppConstants.Colors.surface)
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(AppConstants.Colors.border),
+            alignment: .top
+        )
     }
 }
 
@@ -66,4 +78,3 @@ struct MessageInputView: View {
         )
     }
 }
-

@@ -18,19 +18,20 @@ struct ConversationRowView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 50, height: 50)
-                .foregroundColor(.gray)
+                .foregroundColor(conversation.isGroup ? AppConstants.Colors.accent : AppConstants.Colors.mutedIcon)
             
             VStack(alignment: .leading, spacing: 4) {
                 // Conversation Name
                 Text(conversation.displayName(currentUserId: currentUserId))
                     .font(.headline)
                     .lineLimit(1)
+                    .foregroundColor(AppConstants.Colors.textPrimary)
                 
                 // Last Message
                 if let lastMessage = conversation.lastMessage {
                     Text(lastMessage)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppConstants.Colors.textSecondary)
                         .lineLimit(1)
                 }
             }
@@ -42,7 +43,7 @@ struct ConversationRowView: View {
                 if let timestamp = conversation.lastMessageTimestamp {
                     Text(timestamp.timeAgoDisplay())
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppConstants.Colors.textSecondary)
                 }
                 
                 // Unread Badge
@@ -50,9 +51,9 @@ struct ConversationRowView: View {
                     Text("\(conversation.unreadCount)")
                         .font(.caption2)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppConstants.Colors.textPrimary)
                         .padding(6)
-                        .background(Color.blue)
+                        .background(AppConstants.Colors.accent)
                         .clipShape(Circle())
                 }
             }
@@ -74,4 +75,3 @@ struct ConversationRowView: View {
         )
     }
 }
-

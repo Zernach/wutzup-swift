@@ -6,39 +6,32 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ChatListView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel: ChatListViewModel
     @State private var navigationPath = NavigationPath()
-    
-    init(
-        chatService: ChatService? = nil,
-        authService: AuthenticationService? = nil
-    ) {
-        if let chatService, let authService {
-            _viewModel = StateObject(wrappedValue: ChatListViewModel(
-                chatService: chatService,
-                authService: authService
-            ))
-        } else {
-            let appState = AppState()
-            _viewModel = StateObject(wrappedValue: ChatListViewModel(
-                chatService: appState.chatService,
-                authService: appState.authService
-            ))
-        }
+
+    init(viewModel: ChatListViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
-    
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            Group {
-                if viewModel.isLoading {
-                    ProgressView("Loading conversations...")
-                } else if viewModel.conversations.isEmpty {
-                    emptyStateView
-                } else {
-                    conversationListView
+            ZStack {
+                AppConstants.Colors.background
+                    .ignoresSafeArea()
+
+                Group {
+                    if viewModel.isLoading {
+                        ProgressView("Loading conversations...")
+                            .tint(AppConstants.Colors.accent)
+                    } else if viewModel.conversations.isEmpty {
+                        emptyStateView
+                    } else {
+                        conversationListView
+                    }
                 }
             }
             .navigationTitle("Chats")
@@ -48,13 +41,13 @@ struct ChatListView: View {
                         Button(action: openNewChat) {
                             Label("New Chat", systemImage: "square.and.pencil")
                         }
-                        
+
                         Button(action: openNewGroup) {
                             Label("New Group", systemImage: "person.3")
                         }
-                        
+
                         Divider()
-                        
+
                         Button(role: .destructive, action: {
                             Task {
                                 try? await appState.authService.logout()
@@ -64,18 +57,41 @@ struct ChatListView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
+                            .foregroundColor(AppConstants.Colors.textPrimary)
                     }
                 }
             }
             .navigationDestination(for: Conversation.self) { conversation in
-                ConversationView(conversation: conversation)
+                ConversationView(
+                    viewModel: appState.makeConversationViewModel(for: conversation)
+                )
             }
             .navigationDestination(for: NewChatRoute.self) { _ in
                 NewChatView(
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
-                    createOrFetchConversation: { userId in
-                        await viewModel.createDirectConversation(with: userId, currentUserId: appState.currentUser?.id)
+                    createOrFetchConversation: { @MainActor user in
+                        print("🔍 [DEBUG] ChatListView @MainActor closure - ENTRY POINT")
+                        print("🔍 [DEBUG] Received User:")
+                        print("🔍 [DEBUG]   - id:", user.id)
+                        print("🔍 [DEBUG]   - displayName:", user.displayName)
+                        print("🔍 [DEBUG]   - email:", user.email)
+
+                        // Get current user
+                        guard let currentUser = appState.currentUser else {
+                            print("❌ [ERROR] No current user")
+                            return nil
+                        }
+
+                        print("🔍 [DEBUG] ChatListView - about to call createDirectConversation")
+
+                        // Call with user properties
+                        return await viewModel.createDirectConversation(
+                            with: user.id,
+                            otherDisplayName: user.displayName,
+                            otherEmail: user.email,
+                            currentUser: currentUser
+                        )
                     },
                     onConversationCreated: { conversation in
                         navigateToConversation(conversation)
@@ -86,11 +102,12 @@ struct ChatListView: View {
                 NewGroupView(
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
-                    createGroupConversation: { userIds, groupName in
-                        await viewModel.createGroupConversation(
-                            with: userIds,
+                    createGroupConversation: { users, groupName in
+                        let currentUser = await MainActor.run { appState.currentUser }
+                        return await viewModel.createGroupConversation(
+                            with: users,
                             groupName: groupName,
-                            currentUserId: appState.currentUser?.id
+                            currentUser: currentUser
                         )
                     },
                     onGroupCreated: { conversation in
@@ -108,62 +125,131 @@ struct ChatListView: View {
                 viewModel.stopObserving()
             }
         }
+        .toolbarBackground(AppConstants.Colors.background, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
-    
+
     private var emptyStateView: some View {
         VStack(spacing: 20) {
             Image(systemName: "message.circle")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 100, height: 100)
-                .foregroundColor(.gray)
-            
+                .foregroundColor(AppConstants.Colors.mutedIcon)
+
             Text("No conversations yet")
                 .font(.title2)
-                .foregroundColor(.secondary)
-            
+                .foregroundColor(AppConstants.Colors.textPrimary)
+
             Text("Start a new chat to begin messaging")
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundColor(AppConstants.Colors.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding()
     }
-    
+
     private var conversationListView: some View {
         List {
             ForEach(viewModel.conversations) { conversation in
                 NavigationLink(value: conversation) {
                     ConversationRowView(conversation: conversation, currentUserId: appState.currentUser?.id ?? "")
                 }
+                .listRowBackground(AppConstants.Colors.surface)
+                .listRowSeparatorTint(AppConstants.Colors.border)
             }
         }
+        .scrollContentBackground(.hidden)
+        .listStyle(.plain)
+        .background(AppConstants.Colors.background)
     }
-    
+
     private func openNewChat() {
         navigationPath.append(NewChatRoute())
     }
-    
+
     private func openNewGroup() {
         navigationPath.append(NewGroupRoute())
     }
-    
+
     @MainActor
     private func navigateToConversation(_ conversation: Conversation) {
         viewModel.upsertConversation(conversation)
-        
+
         if !navigationPath.isEmpty {
             navigationPath.removeLast()
         }
-        
+
         navigationPath.append(conversation)
     }
 }
 
 #Preview {
-    ChatListView()
+    let previewService = PreviewChatService()
+    let previewAuth = PreviewAuthenticationService()
+    let viewModel = ChatListViewModel(chatService: previewService, authService: previewAuth)
+    return ChatListView(viewModel: viewModel)
         .environmentObject(AppState())
 }
 
 private struct NewChatRoute: Hashable {}
 private struct NewGroupRoute: Hashable {}
+
+private final class PreviewChatService: ChatService {
+    func createConversation(withUserIds userIds: [String], isGroup: Bool, groupName: String?, participantNames: [String : String]) async throws -> Conversation {
+        Conversation(
+            participantIds: userIds,
+            participantNames: participantNames,
+            isGroup: isGroup,
+            groupName: groupName
+        )
+    }
+
+    func fetchConversations(userId: String) async throws -> [Conversation] {
+        [
+            Conversation(
+                participantIds: ["current", "user-1"],
+                participantNames: ["current": "Me", "user-1": "Alex"],
+                lastMessage: "Hey there!",
+                lastMessageTimestamp: Date()
+            )
+        ]
+    }
+
+    func observeConversations(userId: String) -> AsyncStream<Conversation> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+
+    func fetchOrCreateDirectConversation(userId: String, otherUserId: String, participantNames: [String : String]) async throws -> Conversation {
+        Conversation(
+            participantIds: [userId, otherUserId],
+            participantNames: participantNames
+        )
+    }
+
+    func updateConversation(_ conversation: Conversation) async throws { }
+}
+
+private final class PreviewAuthenticationService: AuthenticationService {
+    var authStatePublisher: AnyPublisher<User?, Never> {
+        Just(User(id: "current", email: "me@wutzup.app", displayName: "Me")).eraseToAnyPublisher()
+    }
+
+    var currentUser: User? {
+        User(id: "current", email: "me@wutzup.app", displayName: "Me")
+    }
+
+    func register(email: String, password: String, displayName: String) async throws -> User {
+        currentUser!
+    }
+
+    func login(email: String, password: String) async throws -> User {
+        currentUser!
+    }
+
+    func logout() async throws { }
+
+    func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
+}

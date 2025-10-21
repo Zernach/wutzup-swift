@@ -6,97 +6,114 @@
 //
 
 import SwiftUI
+import Combine
 
 struct LoginView: View {
-    @EnvironmentObject var authService: FirebaseAuthService
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: AuthenticationViewModel
     @State private var showRegistration = false
     
-    init() {
-        // Initialize with injected auth service
-        let authService = FirebaseAuthService()
-        _viewModel = StateObject(wrappedValue: AuthenticationViewModel(authService: authService))
+    init(viewModel: AuthenticationViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Spacer()
+            ZStack {
+                AppConstants.Colors.background
+                    .ignoresSafeArea()
                 
-                // Logo
-                Image(systemName: "message.circle.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 100, height: 100)
-                    .foregroundColor(.blue)
-                
-                Text("Wutzup")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                // Login Form
-                VStack(spacing: 15) {
-                    TextField("Email", text: $viewModel.email)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .autocapitalization(.none)
-                        .autocorrectionDisabled(true)
-                        .padding()
-                        .background(Color(UIColor.systemGray6))
-                        .cornerRadius(10)
+                VStack(spacing: 24) {
+                    Spacer()
                     
-                    SecureField("Password", text: $viewModel.password)
-                        .textContentType(.password)
-                        .submitLabel(.go)
-                        .autocorrectionDisabled(true)
-                        .padding()
-                        .background(Color(UIColor.systemGray6))
-                        .cornerRadius(10)
-                        .onSubmit {
-                            submitLoginFromPasswordField()
+                    Image(systemName: "message.circle.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(AppConstants.Colors.accent)
+                    
+                    Text("Wutzup")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(AppConstants.Colors.textPrimary)
+                    
+                    Spacer()
+                    
+                    VStack(spacing: 16) {
+                        TextField("Email", text: $viewModel.email)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                            .autocorrectionDisabled(true)
+                            .padding()
+                            .background(AppConstants.Colors.surfaceSecondary)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(AppConstants.Colors.border, lineWidth: 1)
+                            )
+                            .cornerRadius(12)
+                            .foregroundColor(AppConstants.Colors.textPrimary)
+                            .tint(AppConstants.Colors.accent)
+                        
+                        SecureField("Password", text: $viewModel.password)
+                            .textContentType(.password)
+                            .submitLabel(.go)
+                            .autocorrectionDisabled(true)
+                            .padding()
+                            .background(AppConstants.Colors.surfaceSecondary)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(AppConstants.Colors.border, lineWidth: 1)
+                            )
+                            .cornerRadius(12)
+                            .foregroundColor(AppConstants.Colors.textPrimary)
+                            .tint(AppConstants.Colors.accent)
+                            .onSubmit {
+                                submitLoginFromPasswordField()
+                            }
+                        
+                        if let errorMessage = viewModel.errorMessage {
+                            Text(errorMessage)
+                                .foregroundColor(AppConstants.Colors.destructive)
+                                .font(.caption)
+                                .multilineTextAlignment(.center)
                         }
-                    
-                    if let errorMessage = viewModel.errorMessage {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
-                            .font(.caption)
+                        
+                        Button(action: {
+                            Task { await viewModel.login() }
+                        }) {
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .tint(AppConstants.Colors.textPrimary)
+                            } else {
+                                Text("Log In")
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(AppConstants.Colors.accent)
+                        .foregroundColor(AppConstants.Colors.textPrimary)
+                        .cornerRadius(12)
+                        .disabled(viewModel.isLoading)
+                        .shadow(color: AppConstants.Colors.accent.opacity(0.35), radius: 12, y: 4)
                     }
+                    .padding(.horizontal, 30)
                     
                     Button(action: {
-                        Task { await viewModel.login() }
+                        showRegistration = true
                     }) {
-                        if viewModel.isLoading {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Text("Log In")
-                                .fontWeight(.semibold)
-                        }
+                        Text("Don't have an account? **Sign Up**")
+                            .foregroundColor(AppConstants.Colors.accent)
+                            .font(.callout)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .disabled(viewModel.isLoading)
+                    .padding(.top, 6)
+                    
+                    Spacer()
                 }
-                .padding(.horizontal, 30)
-                
-                // Register Link
-                Button(action: {
-                    showRegistration = true
-                }) {
-                    Text("Don't have an account? **Sign Up**")
-                        .foregroundColor(.blue)
-                }
-                .padding(.top, 10)
-                
-                Spacer()
             }
             .navigationDestination(isPresented: $showRegistration) {
-                RegisterView()
+                RegisterView(viewModel: appState.makeAuthenticationViewModel())
             }
         }
     }
@@ -110,6 +127,28 @@ struct LoginView: View {
 }
 
 #Preview {
-    LoginView()
-        .environmentObject(FirebaseAuthService())
+    let previewService = PreviewAuthenticationService()
+    let viewModel = AuthenticationViewModel(authService: previewService)
+    return LoginView(viewModel: viewModel)
+        .environmentObject(AppState())
+}
+
+private final class PreviewAuthenticationService: AuthenticationService {
+    var authStatePublisher: AnyPublisher<User?, Never> {
+        Just(nil).eraseToAnyPublisher()
+    }
+    
+    var currentUser: User? { nil }
+    
+    func register(email: String, password: String, displayName: String) async throws -> User {
+        User(id: UUID().uuidString, email: email, displayName: displayName)
+    }
+    
+    func login(email: String, password: String) async throws -> User {
+        User(id: UUID().uuidString, email: email, displayName: "Preview")
+    }
+    
+    func logout() async throws { }
+    
+    func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
 }

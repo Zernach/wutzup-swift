@@ -6,100 +6,122 @@
 //
 
 import SwiftUI
+import Combine
 
 struct RegisterView: View {
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var authService: FirebaseAuthService
     @StateObject private var viewModel: AuthenticationViewModel
     
-    init() {
-        // Initialize with injected auth service
-        let authService = FirebaseAuthService()
-        _viewModel = StateObject(wrappedValue: AuthenticationViewModel(authService: authService))
+    init(viewModel: AuthenticationViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
     
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
+        ZStack {
+            AppConstants.Colors.background
+                .ignoresSafeArea()
             
-            // Logo
-            Image(systemName: "person.crop.circle.badge.plus")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 80, height: 80)
-                .foregroundColor(.blue)
-            
-            Text("Create Account")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            
-            Spacer()
-            
-            // Registration Form
-            VStack(spacing: 15) {
-                TextField("Display Name", text: $viewModel.displayName)
-                    .textContentType(.name)
-                    .autocorrectionDisabled(true)
-                    .padding()
-                    .background(Color(UIColor.systemGray6))
-                    .cornerRadius(10)
+            VStack(spacing: 24) {
+                Spacer()
                 
-                TextField("Email", text: $viewModel.email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .autocorrectionDisabled(true)
-                    .padding()
-                    .background(Color(UIColor.systemGray6))
-                    .cornerRadius(10)
+                Image(systemName: "person.crop.circle.badge.plus")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 80, height: 80)
+                    .foregroundColor(AppConstants.Colors.accent)
                 
-                SecureField("Password", text: $viewModel.password)
-                    .textContentType(.newPassword)
-                    .submitLabel(.go)
-                    .autocorrectionDisabled(true)
-                    .padding()
-                    .background(Color(UIColor.systemGray6))
-                    .cornerRadius(10)
-                    .onSubmit {
-                        submitRegistrationFromPasswordField()
+                Text("Create Account")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppConstants.Colors.textPrimary)
+                
+                Spacer()
+                
+                VStack(spacing: 16) {
+                    TextField("Display Name", text: $viewModel.displayName)
+                        .textContentType(.name)
+                        .autocorrectionDisabled(true)
+                        .padding()
+                        .background(AppConstants.Colors.surfaceSecondary)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(AppConstants.Colors.border, lineWidth: 1)
+                        )
+                        .cornerRadius(12)
+                        .foregroundColor(AppConstants.Colors.textPrimary)
+                        .tint(AppConstants.Colors.accent)
+                    
+                    TextField("Email", text: $viewModel.email)
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled(true)
+                        .padding()
+                        .background(AppConstants.Colors.surfaceSecondary)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(AppConstants.Colors.border, lineWidth: 1)
+                        )
+                        .cornerRadius(12)
+                        .foregroundColor(AppConstants.Colors.textPrimary)
+                        .tint(AppConstants.Colors.accent)
+                    
+                    SecureField("Password", text: $viewModel.password)
+                        .textContentType(.newPassword)
+                        .submitLabel(.go)
+                        .autocorrectionDisabled(true)
+                        .padding()
+                        .background(AppConstants.Colors.surfaceSecondary)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(AppConstants.Colors.border, lineWidth: 1)
+                        )
+                        .cornerRadius(12)
+                        .foregroundColor(AppConstants.Colors.textPrimary)
+                        .tint(AppConstants.Colors.accent)
+                        .onSubmit {
+                            submitRegistrationFromPasswordField()
+                        }
+                    
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(AppConstants.Colors.destructive)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
                     }
-                
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .font(.caption)
+                    
+                    Button(action: {
+                        Task { await viewModel.register() }
+                    }) {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .tint(AppConstants.Colors.textPrimary)
+                        } else {
+                            Text("Sign Up")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppConstants.Colors.accent)
+                    .foregroundColor(AppConstants.Colors.textPrimary)
+                    .cornerRadius(12)
+                    .disabled(viewModel.isLoading)
+                    .shadow(color: AppConstants.Colors.accent.opacity(0.35), radius: 12, y: 4)
                 }
+                .padding(.horizontal, 30)
                 
                 Button(action: {
-                    Task { await viewModel.register() }
+                    dismiss()
                 }) {
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text("Sign Up")
-                            .fontWeight(.semibold)
-                    }
+                    Text("Already have an account? **Log In**")
+                        .foregroundColor(AppConstants.Colors.accent)
+                        .font(.callout)
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-                .disabled(viewModel.isLoading)
+                .padding(.top, 6)
+                
+                Spacer()
             }
-            .padding(.horizontal, 30)
-            
-            // Back to Login
-            Button(action: {
-                dismiss()
-            }) {
-                Text("Already have an account? **Log In**")
-                    .foregroundColor(.blue)
-            }
-            .padding(.top, 10)
-            
-            Spacer()
         }
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -112,6 +134,7 @@ struct RegisterView: View {
                         Text("Back")
                     }
                 }
+                .tint(AppConstants.Colors.accent)
             }
         }
     }
@@ -126,7 +149,28 @@ struct RegisterView: View {
 
 #Preview {
     NavigationStack {
-        RegisterView()
-            .environmentObject(FirebaseAuthService())
+        let previewService = PreviewAuthenticationService()
+        let viewModel = AuthenticationViewModel(authService: previewService)
+        RegisterView(viewModel: viewModel)
     }
+}
+
+private final class PreviewAuthenticationService: AuthenticationService {
+    var authStatePublisher: AnyPublisher<User?, Never> {
+        Just(nil).eraseToAnyPublisher()
+    }
+    
+    var currentUser: User? { nil }
+    
+    func register(email: String, password: String, displayName: String) async throws -> User {
+        User(id: UUID().uuidString, email: email, displayName: displayName)
+    }
+    
+    func login(email: String, password: String) async throws -> User {
+        User(id: UUID().uuidString, email: email, displayName: "Preview")
+    }
+    
+    func logout() async throws { }
+    
+    func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
 }

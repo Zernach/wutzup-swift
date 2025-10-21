@@ -1,15 +1,20 @@
 # Wutzup - Implementation Tasks (Firebase Edition)
 
 ## Overview
-This document breaks down the Wutzup messaging app implementation into actionable tasks for Firebase-based architecture. **Much simpler than custom backend!**
+
+This document breaks down the Wutzup messaging app implementation into
+actionable tasks for Firebase-based architecture. **Much simpler than custom
+backend!**
 
 **Priority Levels:**
+
 - 🔴 **Critical** - Core functionality, blocks other work
 - 🟡 **High** - Important features, needed for MVP
 - 🟢 **Medium** - Nice to have, can be deferred
 - 🔵 **Low** - Polish and optimization
 
 **Effort Estimates:**
+
 - **XS** - 1-2 hours
 - **S** - 3-5 hours
 - **M** - 1-2 days
@@ -21,6 +26,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## 🎯 Firebase MVP Advantage
 
 ### What We DON'T Need to Build:
+
 - ❌ Backend server (Node.js/Express)
 - ❌ PostgreSQL database
 - ❌ WebSocket server
@@ -31,6 +37,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 - ❌ File storage server
 
 ### What We DO Need to Build:
+
 - ✅ Firebase project setup
 - ✅ Firestore collections & security rules
 - ✅ iOS app (Swift + SwiftUI)
@@ -45,18 +52,22 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 1: Firebase & iOS Setup
 
 ### 1.1 Firebase Project Setup
+
 - [🔴 XS] Create Firebase project in console
+
   - Go to console.firebase.google.com
   - Create new project: "Wutzup"
   - Enable Google Analytics (optional)
 
 - [🔴 S] Setup Firebase services
+
   - Enable Firebase Authentication (Email/Password)
   - Create Firestore database (start in test mode, will add rules later)
   - Enable Firebase Storage
   - Enable Firebase Cloud Messaging (FCM)
 
 - [🔴 M] Setup Firebase CLI & Functions
+
   ```bash
   npm install -g firebase-tools
   firebase login
@@ -65,12 +76,14 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   ```
 
 - [🔴 S] Configure Firestore collections structure
+
   - Create `users` collection
-  - Create `conversations` collection  
+  - Create `conversations` collection
   - Create `presence` collection
   - Add sample data for testing
 
 - [🔴 M] Write Firestore Security Rules
+
   - Rules for users collection
   - Rules for conversations collection
   - Rules for messages subcollection
@@ -83,13 +96,16 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Deploy: `firebase deploy --only storage`
 
 ### 1.2 iOS Project Setup
+
 - [🔴 S] Create new Xcode project
+
   - iOS App, SwiftUI
   - Name: Wutzup
   - Bundle ID: org.archlife.wutzup
   - Minimum iOS: 16.0 (for SwiftData)
 
 - [🔴 M] Setup project structure
+
   ```
   Wutzup/
   ├── App/
@@ -102,6 +118,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   ```
 
 - [🔴 M] Add Firebase SDK via SPM
+
   - Add package: `https://github.com/firebase/firebase-ios-sdk`
   - Select products:
     - FirebaseAuth
@@ -111,15 +128,17 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Add Kingfisher for image caching
 
 - [🔴 S] Download & add GoogleService-Info.plist
+
   - Download from Firebase Console
   - Add to Xcode project (drag & drop)
   - Ensure it's included in target
 
 - [🔴 S] Configure Firebase in app
+
   ```swift
   // WutzupApp.swift
   import FirebaseCore
-  
+
   init() {
       FirebaseApp.configure()
       configureFirestore()
@@ -127,15 +146,18 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   ```
 
 - [🔴 M] Setup SwiftData models
+
   - Create MessageModel
   - Create ConversationModel
   - Create UserModel
   - Setup ModelContainer in App
 
 - [🟡 S] Setup Firebase Emulator Suite
+
   ```bash
   firebase emulators:start
   ```
+
   - Configure iOS to use emulator in debug builds
 
 - [🟡 XS] Create Constants file
@@ -148,13 +170,16 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 2: Authentication
 
 ### 2.1 Firebase Auth Backend
+
 - [🔴 S] Configure Firebase Authentication
   - Enable Email/Password provider in Firebase Console
   - Set password requirements
   - (Optional) Enable email verification
 
 ### 2.2 iOS Authentication
+
 - [🔴 M] Create User model
+
   ```swift
   struct User: Identifiable, Codable {
       let id: String
@@ -166,6 +191,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   ```
 
 - [🔴 L] Implement FirebaseAuthService
+
   - register(email:password:displayName:) async throws
   - login(email:password:) async throws
   - logout() async throws
@@ -173,6 +199,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Create Firestore user document on registration
 
 - [🔴 M] Create LoginView
+
   - Email text field
   - Password secure field
   - Login button
@@ -181,6 +208,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Loading state
 
 - [🔴 M] Create RegisterView
+
   - Email text field
   - Password secure field
   - Display name text field
@@ -189,6 +217,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Loading state
 
 - [🔴 M] Create AuthenticationViewModel
+
   - @Published var currentUser: User?
   - @Published var errorMessage: String?
   - @Published var isLoading: Bool
@@ -201,7 +230,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Automatic navigation on auth state change
 
 ### 2.3 Testing Authentication
+
 - [🔴 M] Test: User registration
+
   - Create new account
   - Verify user document in Firestore
   - Auto-login after registration
@@ -216,13 +247,16 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 3: Core Messaging (One-on-One)
 
 ### 3.1 Firestore Setup
+
 - [🔴 M] Create Firestore indexes
   - Index on conversations: participantIds, lastMessageTimestamp
   - Index on messages: timestamp
   - Deploy: `firebase deploy --only firestore:indexes`
 
 ### 3.2 iOS Data Models
+
 - [🔴 S] Create Message model
+
   ```swift
   struct Message: Identifiable, Codable {
       let id: String
@@ -236,6 +270,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   ```
 
 - [🔴 S] Create Conversation model
+
   ```swift
   struct Conversation: Identifiable, Codable {
       let id: String
@@ -255,7 +290,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   ```
 
 ### 3.3 Firebase Service Layer
+
 - [🔴 L] Implement FirebaseMessageService
+
   - sendMessage(\_: Message) async throws
   - fetchMessages(conversationId:limit:) async throws -> [Message]
   - observeMessages(conversationId:) -> AsyncStream<Message>
@@ -269,7 +306,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Query conversations where user is participant
 
 ### 3.4 Local Persistence (SwiftData)
+
 - [🔴 M] Implement local message caching
+
   - Save messages to SwiftData on receive
   - Query messages from SwiftData for instant display
   - Sync with Firestore in background
@@ -279,13 +318,16 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Update on Firestore changes
 
 ### 3.5 iOS UI - Chat List
+
 - [🔴 M] Create ChatListView
+
   - List of conversations
   - Pull to refresh
   - Empty state ("No conversations")
   - Navigation to conversation
 
 - [🔴 M] Create ChatListViewModel
+
   - @Published var conversations: [Conversation]
   - Observe Firestore conversations
   - Update SwiftData cache
@@ -300,7 +342,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Swipe to delete
 
 ### 3.6 iOS UI - Conversation View
+
 - [🔴 L] Create ConversationView
+
   - Message list (ScrollView with LazyVStack)
   - Message bubbles (sent/received)
   - Auto-scroll to bottom
@@ -309,6 +353,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Keyboard handling
 
 - [🔴 M] Create MessageBubbleView
+
   - Different styles for sent/received
   - Message content
   - Timestamp
@@ -317,6 +362,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Long-press menu (future)
 
 - [🔴 M] Create MessageInputView
+
   - Text field (multi-line)
   - Send button
   - Image picker button
@@ -334,13 +380,16 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Handle keyboard
 
 ### 3.7 Testing Core Messaging
+
 - [🔴 M] Test: Send message from User A → appears on User B
+
   - Two devices/simulators
   - Both logged in
   - Send message
   - Verify instant delivery
 
 - [🔴 M] Test: Local persistence
+
   - Send messages
   - Force quit app
   - Reopen app
@@ -356,6 +405,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 4: Offline Support (Built into Firebase!)
 
 ### 4.1 Enable Firestore Offline Persistence
+
 - [🔴 S] Configure Firestore settings
   ```swift
   let settings = FirestoreSettings()
@@ -365,7 +415,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   ```
 
 ### 4.2 Network Monitoring (Optional but helpful)
+
 - [🟡 M] Implement NetworkMonitor
+
   - Use NWPathMonitor
   - @Published var isConnected: Bool
   - Show connection status in UI
@@ -376,19 +428,23 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Auto-hide when connected
 
 ### 4.3 SwiftData Sync Logic
+
 - [🔴 M] Implement Firestore → SwiftData sync
   - Listen to Firestore changes
   - Update SwiftData on new messages
   - Handle conflicts (Firestore wins)
 
 ### 4.4 Testing Offline Scenarios
+
 - [🔴 M] Test: Offline message sending
+
   - Disconnect network
   - Send messages (they queue in Firestore SDK)
   - Reconnect
   - Verify messages send automatically
 
 - [🔴 M] Test: Receive while offline
+
   - User A online, User B offline
   - User A sends messages
   - User B comes online
@@ -406,12 +462,15 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ### 5.1 Presence (Online/Offline)
 
 #### Firestore
+
 - [🟡 M] Setup presence collection
   - Document per user
   - Fields: status, lastSeen, typing
 
 #### iOS
+
 - [🟡 M] Implement FirebasePresenceService
+
   - setOnline() async throws
   - setOffline() async throws
   - observePresence(userId:) -> AsyncStream<UserStatus>
@@ -425,12 +484,15 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ### 5.2 Typing Indicators
 
 #### Firestore
+
 - [🟡 S] Use presence collection for typing
   - Field: typing: { conversationId: timestamp }
   - Auto-expire after 5 seconds (Cloud Function or client logic)
 
 #### iOS
+
 - [🟡 M] Implement typing indicator logic
+
   - Detect text input changes
   - Debounce (send after 1 second of typing)
   - Send "typing" update to Firestore
@@ -444,12 +506,15 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ### 5.3 Read Receipts
 
 #### Firestore
+
 - [🟡 M] Track read status in messages
   - Field: readBy: [userId1, userId2, ...]
   - Update when message becomes visible
 
 #### iOS
+
 - [🟡 M] Implement read receipt logic
+
   - Mark messages as read when visible (onAppear)
   - Update Firestore readBy array
   - Observe changes via Firestore listener
@@ -465,18 +530,22 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 6: Media Support (Images)
 
 ### 6.1 Firebase Storage Setup
+
 - [🟡 S] Configure Storage rules
   - Allow authenticated uploads
   - Size limits (5MB)
   - Allowed file types (JPEG, PNG)
 
 ### 6.2 iOS Image Handling
+
 - [🟡 M] Implement image picker
+
   - Use PHPickerViewController
   - Request photo library permission
   - Image compression (resize to max 1080px)
 
 - [🟡 M] Implement image upload
+
   - Upload to Firebase Storage
   - Path: `images/{userId}/{UUID}.jpg`
   - Show upload progress
@@ -484,6 +553,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Store URL in message
 
 - [🟡 M] Display images in messages
+
   - Show thumbnail in message bubble
   - Tap to view full screen
   - Use Kingfisher for caching
@@ -499,23 +569,28 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 7: Group Chat
 
 ### 7.1 Firestore Group Setup
+
 - [🟡 S] Update conversations collection
   - Add isGroup boolean
   - Add groupName field
   - Add groupImageUrl field (optional)
 
 ### 7.2 iOS Group Chat
+
 - [🟡 M] Create group creation UI
+
   - Select multiple users
   - Set group name
   - Create conversation button
 
 - [🟡 M] Update ConversationView for groups
+
   - Show sender name above messages
   - Different bubble styles for different senders
   - Group info button (show members)
 
 - [🟡 S] Create GroupInfoView
+
   - List of members
   - Leave group button
   - (Future) Add/remove members
@@ -526,6 +601,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Show read receipts per member
 
 ### 7.3 Testing Group Chat
+
 - [🔴 M] Test: Create group with 3 users
   - User A creates group with B and C
   - All see group in chat list
@@ -537,7 +613,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 8: Push Notifications (FCM)
 
 ### 8.1 Cloud Functions Setup
+
 - [🟡 M] Write Cloud Function: onMessageCreated
+
   ```typescript
   export const onMessageCreated = functions.firestore
     .document('conversations/{conversationId}/messages/{messageId}')
@@ -553,12 +631,15 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   ```
 
 ### 8.2 iOS FCM Setup
+
 - [🟡 M] Configure push notifications
+
   - Enable Push Notifications capability in Xcode
   - Upload APNs key to Firebase Console
   - Request notification permission
 
 - [🟡 M] Implement FirebaseNotificationService
+
   - requestPermission() async -> Bool
   - registerDeviceToken() async throws
   - Store FCM token in Firestore users collection
@@ -570,7 +651,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Handle foreground notifications
 
 ### 8.3 Testing Notifications
+
 - [🟡 M] Test: Foreground notifications
+
   - App is open
   - Receive message
   - Notification banner shows
@@ -586,6 +669,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 9: UI Polish & User Experience
 
 ### 9.1 Animations & Transitions
+
 - [🟢 S] Add message send animation
 - [🟢 S] Add message receive animation
 - [🟢 S] Typing indicator animation (dots)
@@ -593,18 +677,22 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 - [🟢 S] Smooth scroll to bottom
 
 ### 9.2 Improved Message Input
+
 - [🟢 S] Auto-expand text field (multi-line)
 - [🟢 S] Emoji picker button
 - [🟢 S] Disable send when empty
 - [🟢 S] Show character count (if needed)
 
 ### 9.3 User Feedback
+
 - [🟢 S] Haptic feedback on message send
 - [🟢 S] Haptic on message receive
 - [🟢 S] Haptic on button taps
 
 ### 9.4 Profile & Settings
+
 - [🟢 M] Create ProfileView
+
   - Display user info
   - Edit display name
   - Change profile picture
@@ -618,6 +706,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Terms of service link
 
 ### 9.5 Error Handling
+
 - [🟡 M] Improve error states
   - Network errors (user-friendly messages)
   - Failed message retry button
@@ -625,6 +714,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Empty states with helpful messages
 
 ### 9.6 Accessibility
+
 - [🟢 M] VoiceOver support
 - [🟢 S] Dynamic Type support
 - [🟢 S] Color contrast (dark mode)
@@ -635,7 +725,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 10: Testing & Quality Assurance
 
 ### 10.1 Unit Tests
+
 - [🟡 M] Write tests for services
+
   - Mock Firebase services
   - Test message sending logic
   - Test conversation creation
@@ -646,18 +738,21 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Mock service dependencies
 
 ### 10.2 Integration Tests (with Emulator)
+
 - [🟡 M] Test Firestore operations
   - Use Firebase emulator
   - Test real CRUD operations
   - Test real-time listeners
 
 ### 10.3 UI Tests
+
 - [🟢 M] Critical flow tests
   - Login flow
   - Send message flow
   - Create conversation
 
 ### 10.4 Manual Testing (All Test Scenarios)
+
 - [🔴 XL] Execute all 7 test scenarios from PRD
   1. ✅ Real-time chat between two devices
   2. ✅ Offline/online transitions
@@ -672,7 +767,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 11: Performance Optimization
 
 ### 11.1 Firebase Optimization
+
 - [🟢 M] Optimize Firestore queries
+
   - Add pagination (limit 50 messages)
   - Use composite indexes
   - Cache frequently accessed data
@@ -683,7 +780,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Set cache headers
 
 ### 11.2 iOS Performance
+
 - [🟢 M] Profile with Instruments
+
   - Memory leaks
   - CPU usage
   - Network usage
@@ -694,6 +793,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Release memory on warning
 
 ### 11.3 SwiftData Optimization
+
 - [🟢 S] Add indexes to SwiftData models
 - [🟢 S] Limit local cache size
 - [🟢 S] Background context for heavy operations
@@ -703,12 +803,15 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Phase 12: Deployment Preparation
 
 ### 12.1 Firebase Production Setup
+
 - [🟡 M] Create production Firebase project
+
   - Separate from development
   - Configure production Firestore rules
   - Setup Firebase Blaze plan (if needed for Cloud Functions)
 
 - [🟡 S] Deploy production Cloud Functions
+
   ```bash
   firebase use production
   firebase deploy --only functions
@@ -720,6 +823,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Configure alerts
 
 ### 12.2 iOS App Store Preparation
+
 - [🟡 M] Create app icons (all sizes)
 - [🟡 M] Create launch screen
 - [🟡 M] Take screenshots (all device sizes)
@@ -728,6 +832,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 - [🟡 S] Create terms of service
 
 ### 12.3 iOS Build Configuration
+
 - [🟡 M] Configure release build settings
   - Code signing
   - Provisioning profiles
@@ -735,7 +840,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Production GoogleService-Info.plist
 
 ### 12.4 TestFlight
+
 - [🟡 M] Create beta build
+
   - Archive in Xcode
   - Upload to App Store Connect
   - Submit for review
@@ -746,7 +853,9 @@ This document breaks down the Wutzup messaging app implementation into actionabl
   - Fix critical bugs
 
 ### 12.5 Security Audit
+
 - [🟡 M] Review Firestore security rules
+
   - Test with different user roles
   - Verify no unauthorized access
   - Check edge cases
@@ -757,9 +866,39 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 
 ---
 
+## ✅ Critical Bug Fixes Completed
+
+### Swift Async Parameter Corruption Bug (RESOLVED)
+
+- **Issue**: Parameters passed through async closures were corrupted across
+  actor isolation boundaries
+- **Impact**: Empty/corrupted userIds, crashes, data loss
+- **Solution**: Use `@MainActor` annotation on all async closures between views
+- **Status**: ✅ RESOLVED
+- **Documentation**: See `@docs/systemPatterns.md` (Swift Concurrency Patterns)
+  and `@docs/techContext.md` (Critical Issues section)
+- **Files Fixed**:
+  - `wutzup/Views/NewConversation/NewChatView.swift`
+  - `wutzup/Views/ChatList/ChatListView.swift`
+  - `wutzup/ViewModels/ChatListViewModel.swift`
+- **Prevention**: All future async closures MUST use `@MainActor` pattern
+
+### Firestore Security Rules Update (RESOLVED)
+
+- **Issue**: Conversation creation failed due to mismatch between data structure
+  and security rules
+- **Impact**: Unable to start new chats
+- **Solution**: Updated firestore.rules to match actual
+  Conversation.firestoreData structure
+- **Status**: ✅ RESOLVED
+- **Files Fixed**: `firebase/firestore.rules`
+
+---
+
 ## Summary Checklist (MVP Definition of Done)
 
 ### Critical Features ✅
+
 - [ ] Firebase project setup
 - [ ] User authentication (Firebase Auth)
 - [ ] One-on-one chat working end-to-end (Firestore)
@@ -775,6 +914,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 - [ ] Image sharing (Firebase Storage)
 
 ### Test Scenarios ✅
+
 - [ ] Two devices chatting in real-time
 - [ ] Offline/online transitions
 - [ ] Messages sent while app backgrounded
@@ -784,6 +924,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 - [ ] Group chat with 3+ participants
 
 ### Quality Metrics ✅
+
 - [ ] Zero message loss in testing
 - [ ] < 1 second message delivery on good network
 - [ ] < 2 second app launch time
@@ -796,15 +937,15 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 
 ## Firebase vs Custom Backend Task Comparison
 
-| Task Category | Custom Backend | Firebase | Time Saved |
-|--------------|----------------|----------|------------|
-| Backend Setup | 1 week | 1 day | 4 days |
-| Authentication | 1 week | 2 days | 5 days |
-| Real-time Messaging | 2 weeks | 3 days | 11 days |
-| Offline Support | 1 week | 1 day (config) | 6 days |
-| Push Notifications | 1 week | 3 days | 4 days |
-| File Storage | 3 days | 1 day | 2 days |
-| **Total** | **8-10 weeks** | **4-6 weeks** | **4 weeks** |
+| Task Category       | Custom Backend | Firebase       | Time Saved  |
+| ------------------- | -------------- | -------------- | ----------- |
+| Backend Setup       | 1 week         | 1 day          | 4 days      |
+| Authentication      | 1 week         | 2 days         | 5 days      |
+| Real-time Messaging | 2 weeks        | 3 days         | 11 days     |
+| Offline Support     | 1 week         | 1 day (config) | 6 days      |
+| Push Notifications  | 1 week         | 3 days         | 4 days      |
+| File Storage        | 3 days         | 1 day          | 2 days      |
+| **Total**           | **8-10 weeks** | **4-6 weeks**  | **4 weeks** |
 
 **Firebase eliminates ~50% of development time!**
 
@@ -813,6 +954,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 ## Notes
 
 ### Priority Guidelines
+
 - Focus on **🔴 Critical** tasks first - get Firebase + core messaging working
 - Complete authentication before messaging
 - Offline support is mostly handled by Firebase (just enable it)
@@ -820,11 +962,13 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 - Polish (Phase 9-11) is last
 
 ### Time Estimates
+
 - Total estimated effort: **4-6 weeks** for single developer
 - With Firebase: No backend developer needed!
 - Critical path: Setup → Auth → Messaging → Testing
 
 ### Firebase Best Practices
+
 1. Use Firestore emulator for development
 2. Write security rules early (don't rely on test mode)
 3. Enable offline persistence from start
@@ -833,6 +977,7 @@ This document breaks down the Wutzup messaging app implementation into actionabl
 6. Implement pagination (don't load all messages at once)
 
 ### Risk Mitigation
+
 - Start with Firebase emulator (free, fast iteration)
 - Test offline scenarios continuously
 - Use real devices for testing (not just simulator)

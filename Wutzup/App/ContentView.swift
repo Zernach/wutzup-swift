@@ -11,22 +11,26 @@ struct ContentView: View {
     @EnvironmentObject var appState: AppState
     
     var body: some View {
-        Group {
-            if appState.isLoading {
-                ProgressView("Loading...")
-            } else if appState.isAuthenticated {
-                ChatListView(
-                    chatService: appState.chatService,
-                    authService: appState.authService
-                )
-            } else {
-                LoginView()
+        ZStack {
+            AppConstants.Colors.background
+                .ignoresSafeArea()
+            
+            Group {
+                if appState.isLoading {
+                    ProgressView("Loading...")
+                        .tint(AppConstants.Colors.accent)
+                } else if appState.isAuthenticated {
+                    ChatListView(viewModel: appState.chatListViewModel)
+                } else {
+                    LoginView(viewModel: appState.makeAuthenticationViewModel())
+                }
             }
         }
     }
 }
 
 #Preview {
-    ContentView()
-        .environmentObject(AppState())
+    let previewState = AppState()
+    return ContentView()
+        .environmentObject(previewState)
 }

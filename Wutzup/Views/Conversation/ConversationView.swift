@@ -6,24 +6,15 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ConversationView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel: ConversationViewModel
     @State private var scrollProxy: ScrollViewProxy?
     
-    let conversation: Conversation
-    
-    init(conversation: Conversation) {
-        self.conversation = conversation
-        
-        let appState = AppState()
-        _viewModel = StateObject(wrappedValue: ConversationViewModel(
-            conversation: conversation,
-            messageService: appState.messageService,
-            presenceService: appState.presenceService,
-            authService: appState.authService
-        ))
+    init(viewModel: ConversationViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
     
     var body: some View {
@@ -42,7 +33,7 @@ struct ConversationView: View {
                             HStack {
                                 Text(typingText)
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(AppConstants.Colors.textSecondary)
                                     .italic()
                                 Spacer()
                             }
@@ -55,7 +46,7 @@ struct ConversationView: View {
                     scrollProxy = proxy
                     scrollToBottom()
                 }
-                .onChange(of: viewModel.messages.count) { _ in
+                .onChange(of: viewModel.messages.count) { _, _ in
                     scrollToBottom()
                 }
             }
@@ -75,7 +66,7 @@ struct ConversationView: View {
                 }
             )
         }
-        .navigationTitle(conversation.displayName(currentUserId: appState.currentUser?.id ?? ""))
+        .navigationTitle(viewModel.conversation.displayName(currentUserId: appState.currentUser?.id ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task {
@@ -86,6 +77,10 @@ struct ConversationView: View {
         .onDisappear {
             viewModel.stopObserving()
         }
+        .background(
+            AppConstants.Colors.background
+                .ignoresSafeArea()
+        )
     }
     
     private func scrollToBottom() {
@@ -101,11 +96,109 @@ struct ConversationView: View {
 
 #Preview {
     NavigationStack {
-        ConversationView(conversation: Conversation(
-            participantIds: ["1", "2"],
-            participantNames: ["1": "Alice", "2": "Bob"]
-        ))
-        .environmentObject(AppState())
+        let previewService = PreviewMessageService()
+        let previewPresence = PreviewPresenceService()
+        let previewAuth = PreviewAuthenticationService()
+        let viewModel = ConversationViewModel(
+            conversation: Conversation(
+                participantIds: ["1", "2"],
+                participantNames: ["1": "Alice", "2": "Bob"]
+            ),
+            messageService: previewService,
+            presenceService: previewPresence,
+            authService: previewAuth
+        )
+        ConversationView(viewModel: viewModel)
+            .environmentObject(AppState())
     }
 }
 
+private final class PreviewMessageService: MessageService {
+    func fetchMessages(conversationId: String, limit: Int) async throws -> [Message] {
+        [
+            Message(
+                id: "msg-1",
+                conversationId: conversationId,
+                senderId: "1",
+                senderName: "Alice",
+                content: "Hello!",
+                timestamp: Date().addingTimeInterval(-120),
+                status: .sent
+            ),
+            Message(
+                id: "msg-2",
+                conversationId: conversationId,
+                senderId: "2",
+                senderName: "Bob",
+                content: "Hi there 👋",
+                timestamp: Date().addingTimeInterval(-60),
+                status: .sent
+            )
+        ]
+    }
+    
+    func observeMessages(conversationId: String) -> AsyncStream<Message> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+    
+    func sendMessage(conversationId: String, content: String, mediaUrl: String?, mediaType: String?) async throws -> Message {
+        Message(
+            id: UUID().uuidString,
+            conversationId: conversationId,
+            senderId: "1",
+            senderName: "Alice",
+            content: content,
+            timestamp: Date(),
+            status: .sent,
+            isFromCurrentUser: true
+        )
+    }
+    
+    func markAsRead(conversationId: String, messageId: String, userId: String) async throws { }
+    
+    func markAsDelivered(conversationId: String, messageId: String, userId: String) async throws { }
+}
+
+private final class PreviewPresenceService: PresenceService {
+    func setOnline(userId: String) async throws { }
+    
+    func setOffline(userId: String) async throws { }
+
+    func observePresence(userId: String) -> AsyncStream<Presence> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+    
+    func setTyping(userId: String, conversationId: String, isTyping: Bool) async throws { }
+    
+    func observeTyping(conversationId: String) -> AsyncStream<[String : Bool]> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+}
+
+private final class PreviewAuthenticationService: AuthenticationService {
+    var authStatePublisher: AnyPublisher<User?, Never> {
+        Just(User(id: "1", email: "alice@wutzup.app", displayName: "Alice")).eraseToAnyPublisher()
+    }
+    
+    var currentUser: User? {
+        User(id: "1", email: "alice@wutzup.app", displayName: "Alice")
+    }
+    
+    func register(email: String, password: String, displayName: String) async throws -> User {
+        currentUser!
+    }
+    
+    func login(email: String, password: String) async throws -> User {
+        currentUser!
+    }
+    
+    func logout() async throws { }
+    
+    func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
+}

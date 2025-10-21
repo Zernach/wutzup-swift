@@ -14,6 +14,7 @@ import Combine
 class FirebaseAuthService: AuthenticationService, ObservableObject {
     private let auth = Auth.auth()
     private let db = Firestore.firestore()
+    private var authStateListenerHandle: AuthStateDidChangeListenerHandle?
     
     private let authStateSubject = CurrentValueSubject<User?, Never>(nil)
     var authStatePublisher: AnyPublisher<User?, Never> {
@@ -26,7 +27,7 @@ class FirebaseAuthService: AuthenticationService, ObservableObject {
     
     init() {
         // Observe Firebase auth state changes
-        auth.addStateDidChangeListener { [weak self] _, firebaseUser in
+        authStateListenerHandle = auth.addStateDidChangeListener { [weak self] _, firebaseUser in
             Task { @MainActor in
                 guard let self = self else { return }
                 guard let firebaseUser = firebaseUser else {
@@ -42,6 +43,12 @@ class FirebaseAuthService: AuthenticationService, ObservableObject {
                     self.authStateSubject.send(nil)
                 }
             }
+        }
+    }
+    
+    deinit {
+        if let handle = authStateListenerHandle {
+            auth.removeStateDidChangeListener(handle)
         }
     }
     

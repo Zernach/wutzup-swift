@@ -23,6 +23,9 @@ class AppState: ObservableObject {
     let presenceService: FirebasePresenceService
     let notificationService: FirebaseNotificationService
     
+    // Shared view models
+    let chatListViewModel: ChatListViewModel
+    
     private var cancellables = Set<AnyCancellable>()
     
     init() {
@@ -33,6 +36,10 @@ class AppState: ObservableObject {
         self.userService = FirebaseUserService()
         self.presenceService = FirebasePresenceService()
         self.notificationService = FirebaseNotificationService()
+        self.chatListViewModel = ChatListViewModel(
+            chatService: chatService,
+            authService: authService
+        )
         
         // Observe auth state
         observeAuthState()
@@ -42,23 +49,41 @@ class AppState: ObservableObject {
         authService.authStatePublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] user in
-                self?.currentUser = user
-                self?.isAuthenticated = user != nil
-                self?.isLoading = false
+                guard let self else { return }
                 
+                let previousUserId = self.currentUser?.id
+                
+                self.currentUser = user
+                self.isAuthenticated = user != nil
+                self.isLoading = false
+                if user == nil {
+                    self.chatListViewModel.conversations = []
+                }
+
                 // Update presence when auth state changes
                 if let user = user {
                     Task {
-                        try? await self?.presenceService.setOnline(userId: user.id)
+                        try? await self.presenceService.setOnline(userId: user.id)
                     }
-                } else {
+                } else if let previousUserId {
                     Task {
-                        if let userId = self?.currentUser?.id {
-                            try? await self?.presenceService.setOffline(userId: userId)
-                        }
+                        try? await self.presenceService.setOffline(userId: previousUserId)
                     }
                 }
             }
             .store(in: &cancellables)
+    }
+    
+    func makeAuthenticationViewModel() -> AuthenticationViewModel {
+        AuthenticationViewModel(authService: authService)
+    }
+    
+    func makeConversationViewModel(for conversation: Conversation) -> ConversationViewModel {
+        ConversationViewModel(
+            conversation: conversation,
+            messageService: messageService,
+            presenceService: presenceService,
+            authService: authService
+        )
     }
 }

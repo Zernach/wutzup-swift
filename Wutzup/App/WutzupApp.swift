@@ -53,9 +53,9 @@ struct WutzupApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
-                .environmentObject(appState.authService)
+                .preferredColorScheme(.dark)
+                .tint(AppConstants.Colors.accent)
         }
         .modelContainer(modelContainer)
     }
 }
-

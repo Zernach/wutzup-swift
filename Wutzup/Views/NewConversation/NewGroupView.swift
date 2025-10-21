@@ -10,7 +10,7 @@ import SwiftUI
 struct NewGroupView: View {
     @StateObject private var userPickerViewModel: UserPickerViewModel
     
-    let createGroupConversation: ([String], String) async -> Conversation?
+    let createGroupConversation: ([User], String) async -> Conversation?
     let onGroupCreated: (Conversation) -> Void
     
     @State private var selectedUserIds: Set<String> = []
@@ -21,7 +21,7 @@ struct NewGroupView: View {
     
     init(userService: UserService,
          currentUserId: String?,
-         createGroupConversation: @escaping ([String], String) async -> Conversation?,
+         createGroupConversation: @escaping ([User], String) async -> Conversation?,
          onGroupCreated: @escaping (Conversation) -> Void) {
         _userPickerViewModel = StateObject(
             wrappedValue: UserPickerViewModel(
@@ -37,50 +37,67 @@ struct NewGroupView: View {
         groupName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
+    private var selectedUsers: [User] {
+        userPickerViewModel.users.filter { selectedUserIds.contains($0.id) }
+    }
+    
     private var canCreateGroup: Bool {
-        !trimmedGroupName.isEmpty && selectedUserIds.count >= 2 && !isCreatingGroup
+        !trimmedGroupName.isEmpty && selectedUsers.count >= 2 && !isCreatingGroup
     }
     
     var body: some View {
-        Form {
-            Section("Group Name") {
-                TextField("Name your group", text: $groupName)
-                    .textInputAutocapitalization(.words)
-            }
+        ZStack {
+            AppConstants.Colors.background
+                .ignoresSafeArea()
             
-            Section("Participants") {
-                if userPickerViewModel.filteredUsers.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(userPickerViewModel.filteredUsers) { user in
-                        Button {
-                            toggleSelection(for: user)
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(user.displayName)
-                                        .font(.body)
-                                    Text(user.email)
-                                        .font(.footnote)
-                                        .foregroundColor(.secondary)
+            Form {
+                Section("Group Name") {
+                    TextField("Name your group", text: $groupName)
+                        .textInputAutocapitalization(.words)
+                        .foregroundColor(AppConstants.Colors.textPrimary)
+                        .tint(AppConstants.Colors.accent)
+                }
+                
+                Section("Participants") {
+                    if userPickerViewModel.filteredUsers.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(userPickerViewModel.filteredUsers) { user in
+                            Button {
+                                toggleSelection(for: user)
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(user.displayName)
+                                            .font(.body)
+                                            .foregroundColor(AppConstants.Colors.textPrimary)
+                                        Text(user.email)
+                                            .font(.footnote)
+                                            .foregroundColor(AppConstants.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    if selectedUserIds.contains(user.id) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(AppConstants.Colors.accent)
+                                    } else {
+                                        Image(systemName: "circle")
+                                            .foregroundColor(AppConstants.Colors.textSecondary)
+                                    }
                                 }
-                                Spacer()
-                                if selectedUserIds.contains(user.id) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.accentColor)
-                                } else {
-                                    Image(systemName: "circle")
-                                        .foregroundColor(.secondary)
-                                }
+                                .padding(.vertical, 4)
                             }
-                            .padding(.vertical, 4)
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                            .disabled(isCreatingGroup)
+                            .listRowBackground(AppConstants.Colors.surface)
+                            .listRowSeparatorTint(AppConstants.Colors.border)
                         }
-                        .buttonStyle(.plain)
-                        .contentShape(Rectangle())
-                        .disabled(isCreatingGroup)
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(AppConstants.Colors.background)
+            .listRowBackground(AppConstants.Colors.surface)
         }
         .navigationTitle("New Group")
         .searchable(text: $userPickerViewModel.searchText, prompt: "Search users")
@@ -91,10 +108,12 @@ struct NewGroupView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 if isCreatingGroup {
                     ProgressView()
+                        .tint(AppConstants.Colors.accent)
                 } else {
                     Button("Create") {
                         handleCreateGroup()
                     }
+                    .tint(AppConstants.Colors.accent)
                     .disabled(!canCreateGroup)
                 }
             }
@@ -110,17 +129,19 @@ struct NewGroupView: View {
     private var emptyState: some View {
         if userPickerViewModel.isLoading {
             ProgressView()
+                .tint(AppConstants.Colors.accent)
                 .frame(maxWidth: .infinity, alignment: .center)
         } else if userPickerViewModel.searchText.isEmpty {
             VStack(spacing: 12) {
                 Image(systemName: "person.3")
                     .font(.system(size: 48))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppConstants.Colors.mutedIcon)
                 Text("No teammates yet")
                     .font(.headline)
+                    .foregroundColor(AppConstants.Colors.textPrimary)
                 Text("Invite people to your workspace to start a group chat.")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppConstants.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -129,12 +150,13 @@ struct NewGroupView: View {
             VStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 48))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppConstants.Colors.mutedIcon)
                 Text("No matches")
                     .font(.headline)
+                    .foregroundColor(AppConstants.Colors.textPrimary)
                 Text("Try searching by a different name or email.")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppConstants.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -156,11 +178,11 @@ struct NewGroupView: View {
         isCreatingGroup = true
         creationErrorMessage = nil
         
-        let participantIds = Array(selectedUserIds)
         let name = trimmedGroupName
+        let users = selectedUsers
         
         Task {
-            let conversation = await createGroupConversation(participantIds, name)
+            let conversation = await createGroupConversation(users, name)
             await MainActor.run {
                 isCreatingGroup = false
                 
@@ -180,10 +202,12 @@ struct NewGroupView: View {
         NewGroupView(
             userService: PreviewUserService(),
             currentUserId: "current",
-            createGroupConversation: { userIds, name in
-                Conversation(
-                    participantIds: ["current"] + userIds,
-                    participantNames: ["current": "Me"],
+            createGroupConversation: { users, name in
+                var names: [String: String] = ["current": "Me"]
+                users.forEach { names[$0.id] = $0.displayName }
+                return Conversation(
+                    participantIds: ["current"] + users.map(\.id),
+                    participantNames: names,
                     isGroup: true,
                     groupName: name
                 )

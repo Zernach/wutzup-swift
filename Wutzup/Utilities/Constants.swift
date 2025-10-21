@@ -14,11 +14,18 @@ enum AppConstants {
     
     // Colors
     enum Colors {
-        static let primaryBlue = Color.blue
-        static let messageBackground = Color(UIColor.systemGray6)
-        static let myMessageBackground = Color.blue
-        static let textPrimary = Color.primary
-        static let textSecondary = Color.secondary
+        static let background = Color(red: 0.05, green: 0.06, blue: 0.09)
+        static let surface = Color(red: 0.11, green: 0.12, blue: 0.16)
+        static let surfaceSecondary = Color(red: 0.15, green: 0.17, blue: 0.22)
+        static let accent = Color(red: 0.31, green: 0.62, blue: 0.98)
+        static let messageIncoming = Color(red: 0.18, green: 0.19, blue: 0.25)
+        static let messageOutgoing = Color(red: 0.24, green: 0.49, blue: 0.92)
+        static let textPrimary = Color.white
+        static let textSecondary = Color.white.opacity(0.7)
+        static let textTertiary = Color.white.opacity(0.5)
+        static let border = Color.white.opacity(0.08)
+        static let destructive = Color.red.opacity(0.85)
+        static let mutedIcon = Color.white.opacity(0.65)
     }
     
     // Sizes
@@ -35,4 +42,3 @@ enum AppConstants {
         static let messagesPerPage = 50
     }
 }
-

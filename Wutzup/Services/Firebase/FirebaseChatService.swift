@@ -13,28 +13,50 @@ class FirebaseChatService: ChatService {
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
     
-    func createConversation(withUserIds userIds: [String], isGroup: Bool = false, groupName: String? = nil) async throws -> Conversation {
+    func createConversation(
+        withUserIds userIds: [String],
+        isGroup: Bool = false,
+        groupName: String? = nil,
+        participantNames: [String: String] = [:]
+    ) async throws -> Conversation {
         guard let currentUserId = auth.currentUser?.uid else {
             throw NSError(domain: "FirebaseChatService", code: -1, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
         }
         
-        var allParticipantIds = userIds
-        if !allParticipantIds.contains(currentUserId) {
-            allParticipantIds.append(currentUserId)
-        }
+        var allParticipantIds = Set(userIds)
+        allParticipantIds.insert(currentUserId)
         
-        // Fetch participant names
-        var participantNames: [String: String] = [:]
-        for userId in allParticipantIds {
-            let userDoc = try await db.collection("users").document(userId).getDocument()
+        var resolvedParticipantNames = participantNames
+        
+        // Ensure current user name is included
+        if resolvedParticipantNames[currentUserId] == nil {
+            let userDoc = try await db.collection("users").document(currentUserId).getDocument()
             if let displayName = userDoc.data()?["displayName"] as? String {
-                participantNames[userId] = displayName
+                resolvedParticipantNames[currentUserId] = displayName
             }
         }
         
+        // Fetch any missing participant names in batches of 10 (Firestore limitation for "in" queries)
+        let missingIds = allParticipantIds.filter { resolvedParticipantNames[$0] == nil }
+        if !missingIds.isEmpty {
+            for chunk in Array(missingIds).chunked(into: 10) {
+                let snapshot = try await db.collection("users")
+                    .whereField(FieldPath.documentID(), in: chunk)
+                    .getDocuments()
+                
+                for document in snapshot.documents {
+                    if let displayName = document.data()["displayName"] as? String {
+                        resolvedParticipantNames[document.documentID] = displayName
+                    }
+                }
+            }
+        }
+        
+        let participantIdList = Array(allParticipantIds).sorted()
+        
         let conversation = Conversation(
-            participantIds: allParticipantIds,
-            participantNames: participantNames,
+            participantIds: participantIdList,
+            participantNames: resolvedParticipantNames,
             isGroup: isGroup,
             groupName: groupName
         )
@@ -84,7 +106,11 @@ class FirebaseChatService: ChatService {
         }
     }
     
-    func fetchOrCreateDirectConversation(userId: String, otherUserId: String) async throws -> Conversation {
+    func fetchOrCreateDirectConversation(
+        userId: String,
+        otherUserId: String,
+        participantNames: [String: String] = [:]
+    ) async throws -> Conversation {
         // Check if conversation already exists
         let snapshot = try await db.collection("conversations")
             .whereField("participantIds", arrayContains: userId)
@@ -101,7 +127,11 @@ class FirebaseChatService: ChatService {
         }
         
         // Create new conversation
-        return try await createConversation(withUserIds: [userId, otherUserId], isGroup: false)
+        return try await createConversation(
+            withUserIds: [userId, otherUserId],
+            isGroup: false,
+            participantNames: participantNames
+        )
     }
     
     func updateConversation(_ conversation: Conversation) async throws {
@@ -111,3 +141,16 @@ class FirebaseChatService: ChatService {
     }
 }
 
+private extension Array where Element == String {
+    func chunked(into size: Int) -> [[String]] {
+        guard size > 0 else { return [self] }
+        var result: [[String]] = []
+        var index = 0
+        while index < count {
+            let chunk = Array(self[index..<Swift.min(index + size, count)])
+            result.append(chunk)
+            index += size
+        }
+        return result
+    }
+}
