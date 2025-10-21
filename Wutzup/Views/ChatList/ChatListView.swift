@@ -67,7 +67,8 @@ struct ChatListView: View {
             }
             .navigationDestination(for: Conversation.self) { conversation in
                 ConversationView(
-                    viewModel: appState.makeConversationViewModel(for: conversation)
+                    viewModel: appState.makeConversationViewModel(for: conversation),
+                    userService: appState.userService
                 )
             }
             .navigationDestination(for: NewChatRoute.self) { _ in
@@ -258,6 +259,10 @@ private final class PreviewChatService: ChatService {
 private final class PreviewAuthenticationService: AuthenticationService {
     var authStatePublisher: AnyPublisher<User?, Never> {
         Just(User(id: "current", email: "me@wutzup.app", displayName: "Me")).eraseToAnyPublisher()
+    }
+    
+    var isAuthCheckingPublisher: AnyPublisher<Bool, Never> {
+        Just(false).eraseToAnyPublisher()
     }
 
     var currentUser: User? {

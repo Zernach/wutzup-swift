@@ -160,6 +160,10 @@ private final class PreviewAuthenticationService: AuthenticationService {
         Just(nil).eraseToAnyPublisher()
     }
     
+    var isAuthCheckingPublisher: AnyPublisher<Bool, Never> {
+        Just(false).eraseToAnyPublisher()
+    }
+    
     var currentUser: User? { nil }
     
     func register(email: String, password: String, displayName: String) async throws -> User {

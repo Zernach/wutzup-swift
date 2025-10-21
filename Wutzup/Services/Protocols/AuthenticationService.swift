@@ -10,6 +10,7 @@ import Combine
 
 protocol AuthenticationService: AnyObject {
     var authStatePublisher: AnyPublisher<User?, Never> { get }
+    var isAuthCheckingPublisher: AnyPublisher<Bool, Never> { get }
     var currentUser: User? { get }
     
     func register(email: String, password: String, displayName: String) async throws -> User

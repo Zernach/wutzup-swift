@@ -77,11 +77,22 @@ class FirebaseMessageService: MessageService {
         // Update conversation's last message
         print("🔥 [FirebaseMessageService] Updating conversation document...")
         print("🔥 [FirebaseMessageService]   Path: conversations/\(conversationId)")
+        
+        // Fetch conversation to check if it's a group chat
+        let conversationDoc = try await db.collection("conversations").document(conversationId).getDocument()
+        let isGroup = conversationDoc.data()?["isGroup"] as? Bool ?? false
+        
+        // For group chats, prefix message with sender name
+        var lastMessageText = content
+        if isGroup, let senderName = senderName {
+            lastMessageText = "\(senderName): \(content)"
+        }
+        
         do {
             try await db.collection("conversations")
                 .document(conversationId)
                 .updateData([
-                    "lastMessage": content,
+                    "lastMessage": lastMessageText,
                     "lastMessageTimestamp": Timestamp(date: message.timestamp),
                     "updatedAt": Timestamp(date: Date())
                 ])

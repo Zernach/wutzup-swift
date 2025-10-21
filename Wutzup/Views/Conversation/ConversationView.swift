@@ -12,10 +12,14 @@ struct ConversationView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel: ConversationViewModel
     @State private var scrollProxy: ScrollViewProxy?
+    @State private var showingGroupMembers = false
     @Environment(\.scenePhase) private var scenePhase
     
-    init(viewModel: ConversationViewModel) {
+    let userService: UserService
+    
+    init(viewModel: ConversationViewModel, userService: UserService) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.userService = userService
     }
     
     var body: some View {
@@ -86,6 +90,23 @@ struct ConversationView: View {
         }
         .navigationTitle(viewModel.conversation.displayName(currentUserId: appState.currentUser?.id ?? ""))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if viewModel.conversation.isGroup || viewModel.conversation.participantIds.count > 2 {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingGroupMembers = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingGroupMembers) {
+            GroupMembersView(
+                conversation: viewModel.conversation,
+                userService: userService
+            )
+        }
         .onAppear {
             // Load any saved draft for this conversation
             viewModel.loadDraft()
@@ -128,16 +149,19 @@ struct ConversationView: View {
         let previewService = PreviewMessageService()
         let previewPresence = PreviewPresenceService()
         let previewAuth = PreviewAuthenticationService()
+        let previewUser = PreviewUserServiceForConversation()
         let viewModel = ConversationViewModel(
             conversation: Conversation(
-                participantIds: ["1", "2"],
-                participantNames: ["1": "Alice", "2": "Bob"]
+                participantIds: ["1", "2", "3"],
+                participantNames: ["1": "Alice", "2": "Bob", "3": "Charlie"],
+                isGroup: true,
+                groupName: "Team Chat"
             ),
             messageService: previewService,
             presenceService: previewPresence,
             authService: previewAuth
         )
-        ConversationView(viewModel: viewModel)
+        ConversationView(viewModel: viewModel, userService: previewUser)
             .environmentObject(AppState())
     }
 }
@@ -219,6 +243,10 @@ private final class PreviewAuthenticationService: AuthenticationService {
         Just(User(id: "1", email: "alice@wutzup.app", displayName: "Alice")).eraseToAnyPublisher()
     }
     
+    var isAuthCheckingPublisher: AnyPublisher<Bool, Never> {
+        Just(false).eraseToAnyPublisher()
+    }
+    
     var currentUser: User? {
         User(id: "1", email: "alice@wutzup.app", displayName: "Alice")
     }
@@ -236,4 +264,14 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
     
     func deleteAccount() async throws { }
+}
+
+private final class PreviewUserServiceForConversation: UserService {
+    func fetchAllUsers() async throws -> [User] {
+        [
+            User(id: "1", email: "alice@wutzup.app", displayName: "Alice"),
+            User(id: "2", email: "bob@wutzup.app", displayName: "Bob"),
+            User(id: "3", email: "charlie@wutzup.app", displayName: "Charlie")
+        ]
+    }
 }

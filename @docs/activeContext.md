@@ -71,13 +71,31 @@
 ---
 
 ## Current Focus
-**Latest Feature**: 📨 **Read Receipts Implementation COMPLETE!** (October 21, 2025)
+**Latest Feature**: 👥 **Group Members View Implementation COMPLETE!** (October 21, 2025)
+- ✅ Created GroupMembersView to display all chat participants
+- ✅ Added info button in ConversationView navigation bar for group chats
+- ✅ Displays participant names, emails, and profile images
+- ✅ Fetches full user details from Firestore
+- ✅ Sorted member list by display name
+- ✅ Shows member count in section header
+- ✅ Works for both group chats and multi-participant conversations
+- 🎯 **Status:** Implementation complete, ready for testing!
+
+**Previously Completed**: 🔔 **Push Notifications Implementation** (October 21, 2025)
+- ✅ APNs registration in WutzupApp with UIApplicationDelegate
+- ✅ Permission request flow after successful login
+- ✅ Beautiful custom NotificationPermissionView with benefits
+- ✅ FirebaseNotificationService handles tokens and navigation
+- ✅ Cloud Functions already deployed for sending notifications
+- ✅ Comprehensive documentation (PUSH_NOTIFICATIONS_SETUP.md)
+- ✅ Info.plist configuration guide (INFO_PLIST_PUSH_NOTIFICATIONS.md)
+
+**Previously Completed**: 📨 **Read Receipts Implementation** (October 21, 2025)
 - ✅ Backend: Firestore security rules and indexes updated
 - ✅ Service Layer: Batch update methods implemented
 - ✅ ViewModel: Visibility tracking and delivery tracking added
 - ✅ Views: MessageBubbleView and ConversationView updated
 - ✅ Group Chat: ReadReceiptDetailView created for "Read by X of Y" details
-- 🎯 **Status:** Core implementation complete, ready for testing!
 
 **Previously Completed**: 📝 **Draft Message Persistence**
 - ✅ Implemented draft message saving for all conversations

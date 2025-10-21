@@ -21,6 +21,12 @@ class FirebaseAuthService: AuthenticationService, ObservableObject {
         authStateSubject.eraseToAnyPublisher()
     }
     
+    // Track whether Firebase has completed its initial auth check
+    private let isAuthCheckingSubject = CurrentValueSubject<Bool, Never>(true)
+    var isAuthCheckingPublisher: AnyPublisher<Bool, Never> {
+        isAuthCheckingSubject.eraseToAnyPublisher()
+    }
+    
     var currentUser: User? {
         authStateSubject.value
     }
@@ -30,16 +36,27 @@ class FirebaseAuthService: AuthenticationService, ObservableObject {
         authStateListenerHandle = auth.addStateDidChangeListener { [weak self] _, firebaseUser in
             Task { @MainActor in
                 guard let self = self else { return }
+                
+                // Mark that we're checking auth
+                self.isAuthCheckingSubject.send(true)
+                
                 guard let firebaseUser = firebaseUser else {
+                    // No user - auth check complete
                     self.authStateSubject.send(nil)
+                    self.isAuthCheckingSubject.send(false)
                     return
                 }
                 
                 do {
                     let user = try await self.ensureUserDocument(for: firebaseUser)
                     self.authStateSubject.send(user)
+                    // User loaded - auth check complete
+                    self.isAuthCheckingSubject.send(false)
                 } catch {
+                    print("⚠️ Error loading user document: \(error)")
                     self.authStateSubject.send(nil)
+                    // Error occurred - auth check complete (treat as no user)
+                    self.isAuthCheckingSubject.send(false)
                 }
             }
         }

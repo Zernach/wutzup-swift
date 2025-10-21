@@ -237,6 +237,10 @@ private final class PreviewAuthService: AuthenticationService {
         Just(currentUser).eraseToAnyPublisher()
     }
     
+    var isAuthCheckingPublisher: AnyPublisher<Bool, Never> {
+        Just(false).eraseToAnyPublisher()
+    }
+    
     func register(email: String, password: String, displayName: String) async throws -> User {
         User(id: "current", email: email, displayName: displayName)
     }
