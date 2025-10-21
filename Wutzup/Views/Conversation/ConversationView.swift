@@ -12,6 +12,7 @@ struct ConversationView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel: ConversationViewModel
     @State private var scrollProxy: ScrollViewProxy?
+    @Environment(\.scenePhase) private var scenePhase
     
     init(viewModel: ConversationViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -24,11 +25,21 @@ struct ConversationView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(viewModel.messages) { message in
-                            MessageBubbleView(message: message) { failedMessage in
-                                Task { @MainActor in
-                                    await viewModel.retryMessage(failedMessage)
+                            MessageBubbleView(
+                                message: message,
+                                conversation: viewModel.conversation,
+                                onRetry: { failedMessage in
+                                    Task { @MainActor in
+                                        await viewModel.retryMessage(failedMessage)
+                                    }
+                                },
+                                onAppear: {
+                                    viewModel.markMessageVisible(message.id)
+                                },
+                                onDisappear: {
+                                    viewModel.markMessageInvisible(message.id)
                                 }
-                            }
+                            )
                             .id(message.id)
                         }
                         
@@ -76,6 +87,9 @@ struct ConversationView: View {
         .navigationTitle(viewModel.conversation.displayName(currentUserId: appState.currentUser?.id ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
+            // Load any saved draft for this conversation
+            viewModel.loadDraft()
+            
             Task { @MainActor in
                 await viewModel.fetchMessages()
                 viewModel.startObserving()
@@ -83,6 +97,14 @@ struct ConversationView: View {
         }
         .onDisappear {
             viewModel.stopObserving()
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if newPhase == .active {
+                // Mark messages as delivered when app becomes active/foreground
+                Task {
+                    await viewModel.markUndeliveredMessagesAsDelivered()
+                }
+            }
         }
         .background(
             AppConstants.Colors.background
@@ -166,6 +188,10 @@ private final class PreviewMessageService: MessageService {
     func markAsRead(conversationId: String, messageId: String, userId: String) async throws { }
     
     func markAsDelivered(conversationId: String, messageId: String, userId: String) async throws { }
+    
+    func batchMarkAsRead(conversationId: String, messageIds: [String], userId: String) async throws { }
+    
+    func batchMarkAsDelivered(conversationId: String, messageIds: [String], userId: String) async throws { }
 }
 
 private final class PreviewPresenceService: PresenceService {

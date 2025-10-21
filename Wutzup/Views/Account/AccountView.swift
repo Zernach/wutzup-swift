@@ -15,6 +15,8 @@ struct AccountView: View {
     @State private var deleteErrorMessage = ""
     @State private var isDeleting = false
     
+    var presenceService: PresenceService? = nil
+    
     var body: some View {
         ZStack {
             AppConstants.Colors.background
@@ -23,15 +25,13 @@ struct AccountView: View {
             VStack(spacing: 0) {
                 // User Info Section
                 VStack(spacing: 16) {
-                    // Profile Avatar
-                    Circle()
-                        .fill(AppConstants.Colors.accent.opacity(0.2))
-                        .frame(width: 100, height: 100)
-                        .overlay(
-                            Text(initials)
-                                .font(.system(size: 40, weight: .medium))
-                                .foregroundColor(AppConstants.Colors.accent)
-                        )
+                    // Profile Avatar with online status
+                    UserProfileImageView(
+                        user: appState.currentUser,
+                        size: 100,
+                        showOnlineStatus: true,
+                        presenceService: presenceService
+                    )
                     
                     // Display Name
                     Text(appState.currentUser?.displayName ?? "User")
@@ -104,23 +104,6 @@ struct AccountView: View {
         }
         .toolbarBackground(AppConstants.Colors.background, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-    }
-    
-    private var initials: String {
-        guard let displayName = appState.currentUser?.displayName else {
-            return "U"
-        }
-        
-        let components = displayName.split(separator: " ")
-        if components.count >= 2 {
-            let firstInitial = components[0].prefix(1)
-            let lastInitial = components[1].prefix(1)
-            return "\(firstInitial)\(lastInitial)".uppercased()
-        } else if let first = components.first {
-            return String(first.prefix(1)).uppercased()
-        }
-        
-        return "U"
     }
     
     private func deleteAccount() {

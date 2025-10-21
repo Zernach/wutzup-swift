@@ -38,7 +38,9 @@ class AppState: ObservableObject {
         self.notificationService = FirebaseNotificationService()
         self.chatListViewModel = ChatListViewModel(
             chatService: chatService,
-            authService: authService
+            authService: authService,
+            userService: userService,
+            presenceService: presenceService
         )
         
         // Observe auth state

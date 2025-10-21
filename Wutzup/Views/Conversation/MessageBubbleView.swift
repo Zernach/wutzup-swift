@@ -9,7 +9,11 @@ import SwiftUI
 
 struct MessageBubbleView: View {
     let message: Message
+    let conversation: Conversation?
     var onRetry: ((Message) -> Void)?
+    var onAppear: (() -> Void)?
+    var onDisappear: (() -> Void)?
+    @State private var showingReadReceipts = false
     
     var body: some View {
         HStack {
@@ -63,6 +67,24 @@ struct MessageBubbleView: View {
             }
         }
         .padding(.horizontal)
+        .onAppear {
+            onAppear?()
+        }
+        .onDisappear {
+            onDisappear?()
+        }
+        .onLongPressGesture {
+            // Only show details for group chats and sent messages
+            if let conversation = conversation,
+               conversation.isGroup && message.isFromCurrentUser {
+                showingReadReceipts = true
+            }
+        }
+        .sheet(isPresented: $showingReadReceipts) {
+            if let conversation = conversation {
+                ReadReceiptDetailView(message: message, conversation: conversation)
+            }
+        }
     }
     
     @ViewBuilder
@@ -105,22 +127,28 @@ struct MessageBubbleView: View {
 
 #Preview {
     VStack(spacing: 10) {
-        MessageBubbleView(message: Message(
-            conversationId: "1",
-            senderId: "1",
-            content: "Hey, how are you?",
-            status: .sent,
-            isFromCurrentUser: true
-        ))
+        MessageBubbleView(
+            message: Message(
+                conversationId: "1",
+                senderId: "1",
+                content: "Hey, how are you?",
+                status: .sent,
+                isFromCurrentUser: true
+            ),
+            conversation: nil
+        )
         
-        MessageBubbleView(message: Message(
-            conversationId: "1",
-            senderId: "2",
-            senderName: "Alice",
-            content: "I'm good! How about you?",
-            status: .read,
-            isFromCurrentUser: false
-        ))
+        MessageBubbleView(
+            message: Message(
+                conversationId: "1",
+                senderId: "2",
+                senderName: "Alice",
+                content: "I'm good! How about you?",
+                status: .read,
+                isFromCurrentUser: false
+            ),
+            conversation: nil
+        )
     }
     .padding()
 }

@@ -203,5 +203,45 @@ class FirebaseMessageService: MessageService {
         
         print("✅ [FirebaseMessageService] Message marked as delivered")
     }
+    
+    // MARK: - Batch Operations
+    
+    func batchMarkAsRead(conversationId: String, messageIds: [String], userId: String) async throws {
+        guard !messageIds.isEmpty else { return }
+        
+        print("🔥 [FirebaseMessageService] Batch marking \(messageIds.count) messages as read")
+        
+        let batch = db.batch()
+        let messagesRef = db.collection("conversations").document(conversationId).collection("messages")
+        
+        for messageId in messageIds {
+            let messageRef = messagesRef.document(messageId)
+            batch.updateData([
+                "readBy": FieldValue.arrayUnion([userId])
+            ], forDocument: messageRef)
+        }
+        
+        try await batch.commit()
+        print("✅ [FirebaseMessageService] Batch marked \(messageIds.count) messages as read")
+    }
+    
+    func batchMarkAsDelivered(conversationId: String, messageIds: [String], userId: String) async throws {
+        guard !messageIds.isEmpty else { return }
+        
+        print("🔥 [FirebaseMessageService] Batch marking \(messageIds.count) messages as delivered")
+        
+        let batch = db.batch()
+        let messagesRef = db.collection("conversations").document(conversationId).collection("messages")
+        
+        for messageId in messageIds {
+            let messageRef = messagesRef.document(messageId)
+            batch.updateData([
+                "deliveredTo": FieldValue.arrayUnion([userId])
+            ], forDocument: messageRef)
+        }
+        
+        try await batch.commit()
+        print("✅ [FirebaseMessageService] Batch marked \(messageIds.count) messages as delivered")
+    }
 }
 

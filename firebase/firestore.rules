@@ -128,10 +128,18 @@ service cloud.firestore {
         // Only participants can update messages (for read receipts)
         allow update: if isAuthenticated()
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds
+          // Only allow updating specific fields for read receipts
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy', 'deliveredTo', 'status'])
+          // Core fields cannot be changed
           && request.resource.data.id == resource.data.id
           && request.resource.data.senderId == resource.data.senderId
           && request.resource.data.content == resource.data.content
-          && request.resource.data.timestamp == resource.data.timestamp;
+          && request.resource.data.timestamp == resource.data.timestamp
+          // User can only add themselves to readBy/deliveredTo arrays
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['readBy']) 
+              || (request.resource.data.readBy.toSet().difference(resource.data.readBy.toSet()).hasOnly([request.auth.uid])))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['deliveredTo'])
+              || (request.resource.data.deliveredTo.toSet().difference(resource.data.deliveredTo.toSet()).hasOnly([request.auth.uid])));
 
         // Messages cannot be deleted (MVP - may add later)
         allow delete: if false;

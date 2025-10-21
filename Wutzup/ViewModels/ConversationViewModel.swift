@@ -17,21 +17,116 @@ class ConversationViewModel: ObservableObject {
     @Published var isSending = false
     @Published var errorMessage: String?
     @Published var typingUsers: [String: Bool] = [:]
+    @Published var visibleMessageIds: Set<String> = []
     
     let conversation: Conversation
     private let messageService: MessageService
     private let presenceService: PresenceService
     private let authService: AuthenticationService
+    private let draftManager: DraftManager
     
     private var messageObservationTask: Task<Void, Never>?
     private var typingObservationTask: Task<Void, Never>?
     private var typingTimer: Timer?
+    private var readReceiptDebounceTask: Task<Void, Never>?
     
-    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService) {
+    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, draftManager: DraftManager = .shared) {
         self.conversation = conversation
         self.messageService = messageService
         self.presenceService = presenceService
         self.authService = authService
+        self.draftManager = draftManager
+    }
+    
+    /// Load any saved draft message for this conversation
+    func loadDraft() {
+        if let draft = draftManager.loadDraft(for: conversation.id) {
+            messageText = draft
+            print("📝 [ConversationViewModel] Loaded draft: '\(draft)'")
+        }
+    }
+    
+    /// Save the current message text as a draft
+    func saveDraft() {
+        draftManager.saveDraft(messageText, for: conversation.id)
+    }
+    
+    // MARK: - Visibility Tracking for Read Receipts
+    
+    /// Mark a message as visible on screen
+    func markMessageVisible(_ messageId: String) {
+        visibleMessageIds.insert(messageId)
+        scheduleReadReceiptUpdate()
+    }
+    
+    /// Mark a message as no longer visible
+    func markMessageInvisible(_ messageId: String) {
+        visibleMessageIds.remove(messageId)
+    }
+    
+    /// Debounce: wait 1 second before marking messages as read
+    private func scheduleReadReceiptUpdate() {
+        readReceiptDebounceTask?.cancel()
+        readReceiptDebounceTask = Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+            await markVisibleMessagesAsRead()
+        }
+    }
+    
+    /// Mark all currently visible messages as read (batch operation)
+    private func markVisibleMessagesAsRead() async {
+        guard let currentUserId = authService.currentUser?.id else { return }
+        
+        // Find visible messages that haven't been read yet
+        let unreadVisibleMessages = messages.filter { message in
+            visibleMessageIds.contains(message.id) &&
+            !message.isFromCurrentUser &&
+            !message.readBy.contains(currentUserId)
+        }
+        
+        guard !unreadVisibleMessages.isEmpty else { return }
+        
+        print("👁️ [ConversationViewModel] Marking \(unreadVisibleMessages.count) visible messages as read")
+        
+        // Use batch operation for efficiency
+        let messageIds = unreadVisibleMessages.map { $0.id }
+        do {
+            try await messageService.batchMarkAsRead(
+                conversationId: conversation.id,
+                messageIds: messageIds,
+                userId: currentUserId
+            )
+        } catch {
+            print("❌ [ConversationViewModel] Failed to batch mark as read: \(error)")
+        }
+    }
+    
+    // MARK: - Delivery Tracking
+    
+    /// Mark messages as delivered when conversation opens or app foregrounds
+    func markUndeliveredMessagesAsDelivered() async {
+        guard let currentUserId = authService.currentUser?.id else { return }
+        
+        // Find messages not yet delivered to current user
+        let undeliveredMessages = messages.filter { message in
+            !message.isFromCurrentUser && !message.deliveredTo.contains(currentUserId)
+        }
+        
+        guard !undeliveredMessages.isEmpty else { return }
+        
+        print("📬 [ConversationViewModel] Marking \(undeliveredMessages.count) messages as delivered")
+        
+        // Use batch operation for efficiency
+        let messageIds = undeliveredMessages.map { $0.id }
+        do {
+            try await messageService.batchMarkAsDelivered(
+                conversationId: conversation.id,
+                messageIds: messageIds,
+                userId: currentUserId
+            )
+        } catch {
+            print("❌ [ConversationViewModel] Failed to batch mark as delivered: \(error)")
+        }
     }
     
     func startObserving() {
@@ -47,23 +142,42 @@ class ConversationViewModel: ObservableObject {
                 print("🟢 [ConversationViewModel]   content: '\(message.content)'")
                 print("🟢 [ConversationViewModel]   status: \(message.status)")
                 
+                // Calculate status based on readBy/deliveredTo arrays
+                var updatedMessage = message
+                
+                if message.isFromCurrentUser {
+                    // For sent messages, calculate status based on recipient's actions
+                    let otherParticipants = conversation.participantIds.filter { $0 != authService.currentUser?.id }
+                    
+                    if otherParticipants.allSatisfy({ message.readBy.contains($0) }) {
+                        updatedMessage.status = .read
+                        print("🟢 [ConversationViewModel]   Calculated status: .read (all read)")
+                    } else if otherParticipants.allSatisfy({ message.deliveredTo.contains($0) }) {
+                        updatedMessage.status = .delivered
+                        print("🟢 [ConversationViewModel]   Calculated status: .delivered (all delivered)")
+                    } else if !message.deliveredTo.isEmpty || !message.readBy.isEmpty {
+                        updatedMessage.status = .sent
+                        print("🟢 [ConversationViewModel]   Calculated status: .sent")
+                    }
+                }
+                
+                // Update or add message
                 if let index = messages.firstIndex(where: { $0.id == message.id }) {
                     print("🟢 [ConversationViewModel]   Updating existing message at index \(index)")
-                    messages[index] = message
+                    messages[index] = updatedMessage
                 } else {
                     print("🟢 [ConversationViewModel]   Adding new message to array")
-                    messages.append(message)
+                    messages.append(updatedMessage)
                 }
                 
                 // Sort by timestamp
                 messages.sort { $0.timestamp < $1.timestamp }
                 print("🟢 [ConversationViewModel]   Total messages: \(messages.count)")
                 
-                // Handle status updates for received messages
+                // Auto-mark received messages as delivered (NOT read - that happens via visibility)
                 if !message.isFromCurrentUser, let userId = authService.currentUser?.id {
-                    // Mark as delivered if not already
                     if !message.deliveredTo.contains(userId) {
-                        print("🟢 [ConversationViewModel]   Marking message as delivered")
+                        print("🟢 [ConversationViewModel]   Auto-marking new message as delivered")
                         Task {
                             try? await messageService.markAsDelivered(
                                 conversationId: conversation.id,
@@ -72,18 +186,7 @@ class ConversationViewModel: ObservableObject {
                             )
                         }
                     }
-                    
-                    // Mark as read (happens automatically when user views it)
-                    if !message.readBy.contains(userId) {
-                        print("🟢 [ConversationViewModel]   Marking message as read")
-                        Task {
-                            try? await messageService.markAsRead(
-                                conversationId: conversation.id,
-                                messageId: message.id,
-                                userId: userId
-                            )
-                        }
-                    }
+                    // Read marking now handled by visibility tracking
                 }
             }
             print("🟢 [ConversationViewModel] Message observation Task ended")
@@ -103,6 +206,9 @@ class ConversationViewModel: ObservableObject {
         messageObservationTask = nil
         typingObservationTask?.cancel()
         typingObservationTask = nil
+        
+        // Save draft before leaving
+        saveDraft()
         
         // Stop typing indicator on leave
         if let userId = authService.currentUser?.id {
@@ -125,6 +231,10 @@ class ConversationViewModel: ObservableObject {
                 conversationId: conversation.id,
                 limit: AppConstants.Limits.messagesPerPage
             )
+            
+            // Mark all undelivered messages as delivered after fetching
+            await markUndeliveredMessagesAsDelivered()
+            
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -164,6 +274,10 @@ class ConversationViewModel: ObservableObject {
         // Add to UI immediately (optimistic update)
         messages.append(optimisticMessage)
         messages.sort { $0.timestamp < $1.timestamp }
+        
+        // Remove draft since we're sending
+        print("📝 [ConversationViewModel] Removing draft after sending message")
+        draftManager.removeDraft(for: conversation.id)
         
         // Stop typing indicator
         print("🟢 [ConversationViewModel] Stopping typing indicator for user: \(currentUser.id)")
@@ -220,6 +334,9 @@ class ConversationViewModel: ObservableObject {
     
     func onTypingChanged() {
         guard let userId = authService.currentUser?.id else { return }
+        
+        // Save draft whenever text changes
+        saveDraft()
         
         // Cancel previous timer
         typingTimer?.invalidate()

@@ -13,5 +13,9 @@ protocol MessageService: AnyObject {
     func observeMessages(conversationId: String) -> AsyncStream<Message>
     func markAsRead(conversationId: String, messageId: String, userId: String) async throws
     func markAsDelivered(conversationId: String, messageId: String, userId: String) async throws
+    
+    // Batch operations for efficient read receipts
+    func batchMarkAsRead(conversationId: String, messageIds: [String], userId: String) async throws
+    func batchMarkAsDelivered(conversationId: String, messageIds: [String], userId: String) async throws
 }
 

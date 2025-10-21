@@ -71,7 +71,21 @@
 ---
 
 ## Current Focus
-**Just Completed**: 🎉 **Complete iOS Swift MVP Project!**
+**Latest Feature**: 📨 **Read Receipts Implementation COMPLETE!** (October 21, 2025)
+- ✅ Backend: Firestore security rules and indexes updated
+- ✅ Service Layer: Batch update methods implemented
+- ✅ ViewModel: Visibility tracking and delivery tracking added
+- ✅ Views: MessageBubbleView and ConversationView updated
+- ✅ Group Chat: ReadReceiptDetailView created for "Read by X of Y" details
+- 🎯 **Status:** Core implementation complete, ready for testing!
+
+**Previously Completed**: 📝 **Draft Message Persistence**
+- ✅ Implemented draft message saving for all conversations
+- ✅ Drafts persist in local storage (UserDefaults)
+- ✅ Auto-save on text change, auto-clear on send
+- ✅ Visual "Draft:" indicator in chat list
+
+**Previously Completed**: 🎉 **Complete iOS Swift MVP Project!**
 
 ### Backend (100% Complete) ✅
 - ✅ Firestore security rules deployed
@@ -112,7 +126,46 @@ Everything needed for a working MVP:
 
 ## Next Steps
 
-### Immediate (Today - 2-3 Hours)
+### Immediate (Next Steps)
+1. **Deploy Firebase Changes** (5 minutes)
+   ```bash
+   cd firebase
+   firebase deploy --only firestore:rules,firestore:indexes
+   ```
+
+2. **Build and Test in Xcode** (30 minutes)
+   - Build project to verify compilation
+   - Test on simulator:
+     * Open conversation, verify messages marked as delivered
+     * Scroll to view messages, verify marked as read after 1s
+     * Rapid scroll, verify debouncing works
+     * Test status icon transitions
+
+3. **Test on Physical Devices** (2-3 hours)
+   - Test 1-on-1 read receipts (2 devices)
+   - Test group chat read receipts (3+ devices)
+   - Test offline sync
+   - Test app lifecycle (background/foreground)
+   - Long-press message in group chat for details
+
+4. **Performance Testing** (1 hour)
+   - Profile with Instruments
+   - Check Firestore write counts
+   - Verify 60 FPS during scrolling
+   - Monitor battery usage
+
+### Future Enhancements
+1. **Privacy Settings** (Post-MVP)
+   - Option to disable read receipts
+   - "Last seen" privacy controls
+
+2. **Advanced Features** (Post-MVP)
+   - Read receipt timestamps
+   - Notification on read (optional)
+   - Read receipt analytics
+
+### Original Setup Tasks (On Hold)
+1. **Create Xcode project** (30 min)
 1. **Create Xcode project** (30 min)
    - New iOS App (SwiftUI)
    - iOS 16+ minimum

@@ -74,6 +74,7 @@ struct ChatListView: View {
                 NewChatView(
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
+                    presenceService: appState.presenceService,
                     createOrFetchConversation: { @MainActor user in
                         // Get current user
                         guard let currentUser = appState.currentUser else {
@@ -104,7 +105,7 @@ struct ChatListView: View {
                 )
             }
             .navigationDestination(for: AccountRoute.self) { _ in
-                AccountView()
+                AccountView(presenceService: appState.presenceService)
             }
             .onAppear {
                 Task { @MainActor in
@@ -142,9 +143,15 @@ struct ChatListView: View {
 
     private var conversationListView: some View {
         List {
-            ForEach(viewModel.conversations) { conversation in
+            ForEach(viewModel.conversations, id: \.id) { conversation in
                 NavigationLink(value: conversation) {
-                    ConversationRowView(conversation: conversation, currentUserId: appState.currentUser?.id ?? "")
+                    ConversationRowView(
+                        conversation: conversation,
+                        currentUserId: appState.currentUser?.id ?? "",
+                        otherUser: otherUser(for: conversation),
+                        presenceService: appState.presenceService,
+                        typingIndicatorText: viewModel.getTypingIndicatorText(for: conversation)
+                    )
                 }
                 .listRowBackground(AppConstants.Colors.surface)
                 .listRowSeparatorTint(AppConstants.Colors.border)
@@ -153,6 +160,21 @@ struct ChatListView: View {
         .scrollContentBackground(.hidden)
         .listStyle(.plain)
         .background(AppConstants.Colors.background)
+    }
+    
+    // Get the other user for a direct conversation
+    private func otherUser(for conversation: Conversation) -> User? {
+        guard !conversation.isGroup else { return nil }
+        
+        let currentUserId = appState.currentUser?.id ?? ""
+        let otherParticipantId = conversation.participantIds.first { $0 != currentUserId }
+        
+        // Try to get user from viewModel's user cache
+        if let userId = otherParticipantId {
+            return viewModel.getUser(byId: userId)
+        }
+        
+        return nil
     }
 
     private func openNewChat() {
@@ -182,7 +204,12 @@ struct ChatListView: View {
 #Preview {
     let previewService = PreviewChatService()
     let previewAuth = PreviewAuthenticationService()
-    let viewModel = ChatListViewModel(chatService: previewService, authService: previewAuth)
+    let previewPresence = PreviewPresenceServiceForChat()
+    let viewModel = ChatListViewModel(
+        chatService: previewService,
+        authService: previewAuth,
+        presenceService: previewPresence
+    )
     return ChatListView(viewModel: viewModel)
         .environmentObject(AppState())
 }
@@ -250,4 +277,23 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
     
     func deleteAccount() async throws { }
+}
+
+private final class PreviewPresenceServiceForChat: PresenceService {
+    func setOnline(userId: String) async throws { }
+    func setOffline(userId: String) async throws { }
+    
+    func observePresence(userId: String) -> AsyncStream<Presence> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+    
+    func setTyping(userId: String, conversationId: String, isTyping: Bool) async throws { }
+    
+    func observeTyping(conversationId: String) -> AsyncStream<[String: Bool]> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
 }

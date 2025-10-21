@@ -14,6 +14,7 @@ struct NewChatView: View {
     // Pass User directly - mark as @MainActor to avoid async boundary corruption
     let createOrFetchConversation: @MainActor (User) async -> Conversation?
     let onConversationCreated: (Conversation) -> Void
+    let presenceService: PresenceService?
 
     @State private var isCreatingConversation = false
     @State private var creationErrorMessage: String?
@@ -21,6 +22,7 @@ struct NewChatView: View {
 
     init(userService: UserService,
          currentUserId: String?,
+         presenceService: PresenceService?,
          createOrFetchConversation: @escaping @MainActor (User) async -> Conversation?,
          onConversationCreated: @escaping (Conversation) -> Void) {
         _userPickerViewModel = StateObject(
@@ -31,6 +33,7 @@ struct NewChatView: View {
         )
         self.createOrFetchConversation = createOrFetchConversation
         self.onConversationCreated = onConversationCreated
+        self.presenceService = presenceService
     }
 
     var body: some View {
@@ -46,7 +49,15 @@ struct NewChatView: View {
                         Button {
                             handleUserSelection(user)
                         } label: {
-                            HStack {
+                            HStack(spacing: 12) {
+                                // User profile image with online status
+                                UserProfileImageView(
+                                    user: user,
+                                    size: 50,
+                                    showOnlineStatus: true,
+                                    presenceService: presenceService
+                                )
+                                
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(user.displayName)
                                         .font(.headline)
@@ -55,6 +66,7 @@ struct NewChatView: View {
                                         .font(.subheadline)
                                         .foregroundColor(AppConstants.Colors.textSecondary)
                                 }
+                                
                                 Spacer()
                             }
                             .padding(.vertical, 4)
@@ -169,6 +181,7 @@ struct NewChatView: View {
         NewChatView(
             userService: PreviewUserService(),
             currentUserId: "current",
+            presenceService: PreviewPresenceService(),
             createOrFetchConversation: { @MainActor user in
                 Conversation(
                     participantIds: ["current", user.id],
@@ -184,9 +197,36 @@ struct NewChatView: View {
 private final class PreviewUserService: UserService {
     func fetchAllUsers() async throws -> [User] {
         [
-            User(id: "1", email: "alice@test.com", displayName: "Alice"),
-            User(id: "2", email: "bob@test.com", displayName: "Bob"),
-            User(id: "3", email: "charlie@test.com", displayName: "Charlie")
+            User(id: "1", email: "alice@test.com", displayName: "Alice Johnson"),
+            User(id: "2", email: "bob@test.com", displayName: "Bob Smith"),
+            User(id: "3", email: "charlie@test.com", displayName: "Charlie Brown")
         ]
+    }
+}
+
+private class PreviewPresenceService: PresenceService {
+    func setOnline(userId: String) async throws { }
+    func setOffline(userId: String) async throws { }
+    
+    func observePresence(userId: String) -> AsyncStream<Presence> {
+        AsyncStream { continuation in
+            // Alternate between online and offline for preview variety
+            let isOnline = userId.hashValue % 2 == 0
+            let presence = Presence(
+                userId: userId,
+                status: isOnline ? .online : .offline,
+                lastSeen: Date(),
+                typing: [:]
+            )
+            continuation.yield(presence)
+            continuation.finish()
+        }
+    }
+    
+    func setTyping(userId: String, conversationId: String, isTyping: Bool) async throws { }
+    func observeTyping(conversationId: String) -> AsyncStream<[String: Bool]> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
     }
 }

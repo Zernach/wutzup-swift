@@ -25,6 +25,7 @@ enum AppConstants {
         static let textTertiary = Color.white.opacity(0.5)
         static let border = Color.white.opacity(0.08)
         static let destructive = Color.red.opacity(0.85)
+        static let error = Color(red: 1.0, green: 0.3, blue: 0.3) // Bright red for errors/drafts
         static let mutedIcon = Color.white.opacity(0.65)
     }
     
