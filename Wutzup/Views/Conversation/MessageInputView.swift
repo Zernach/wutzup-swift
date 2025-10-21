@@ -10,8 +10,9 @@ import SwiftUI
 struct MessageInputView: View {
     @Binding var text: String
     let isSending: Bool
-    let onSend: () -> Void
+    let onSend: (String) -> Void
     let onTextChanged: () -> Void
+    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         HStack(spacing: 12) {
@@ -28,14 +29,18 @@ struct MessageInputView: View {
                 .foregroundColor(AppConstants.Colors.textPrimary)
                 .tint(AppConstants.Colors.accent)
                 .lineLimit(1...5)
+                .focused($isTextFieldFocused)
                 .onChange(of: text) {
                     onTextChanged()
                 }
             
             // Send Button
             Button(action: {
-                if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    onSend()
+                let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmedText.isEmpty {
+                    isTextFieldFocused = false
+                    text = ""
+                    onSend(trimmedText)
                 }
             }) {
                 if isSending {
@@ -73,7 +78,7 @@ struct MessageInputView: View {
         MessageInputView(
             text: .constant(""),
             isSending: false,
-            onSend: {},
+            onSend: { _ in },
             onTextChanged: {}
         )
     }

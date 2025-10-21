@@ -35,30 +35,58 @@ class ConversationViewModel: ObservableObject {
     }
     
     func startObserving() {
+        print("🟢 [ConversationViewModel] startObserving() - ENTRY")
+        
         // Observe messages
         messageObservationTask?.cancel()
         messageObservationTask = Task {
+            print("🟢 [ConversationViewModel] Starting message observation Task")
             for await message in messageService.observeMessages(conversationId: conversation.id) {
+                print("🟢 [ConversationViewModel] Received message from listener:")
+                print("🟢 [ConversationViewModel]   messageId: \(message.id)")
+                print("🟢 [ConversationViewModel]   content: '\(message.content)'")
+                print("🟢 [ConversationViewModel]   status: \(message.status)")
+                
                 if let index = messages.firstIndex(where: { $0.id == message.id }) {
+                    print("🟢 [ConversationViewModel]   Updating existing message at index \(index)")
                     messages[index] = message
                 } else {
+                    print("🟢 [ConversationViewModel]   Adding new message to array")
                     messages.append(message)
                 }
                 
                 // Sort by timestamp
                 messages.sort { $0.timestamp < $1.timestamp }
+                print("🟢 [ConversationViewModel]   Total messages: \(messages.count)")
                 
-                // Mark as read if not from current user
+                // Handle status updates for received messages
                 if !message.isFromCurrentUser, let userId = authService.currentUser?.id {
-                    Task {
-                        try? await messageService.markAsRead(
-                            conversationId: conversation.id,
-                            messageId: message.id,
-                            userId: userId
-                        )
+                    // Mark as delivered if not already
+                    if !message.deliveredTo.contains(userId) {
+                        print("🟢 [ConversationViewModel]   Marking message as delivered")
+                        Task {
+                            try? await messageService.markAsDelivered(
+                                conversationId: conversation.id,
+                                messageId: message.id,
+                                userId: userId
+                            )
+                        }
+                    }
+                    
+                    // Mark as read (happens automatically when user views it)
+                    if !message.readBy.contains(userId) {
+                        print("🟢 [ConversationViewModel]   Marking message as read")
+                        Task {
+                            try? await messageService.markAsRead(
+                                conversationId: conversation.id,
+                                messageId: message.id,
+                                userId: userId
+                            )
+                        }
                     }
                 }
             }
+            print("🟢 [ConversationViewModel] Message observation Task ended")
         }
         
         // Observe typing indicators
@@ -104,23 +132,26 @@ class ConversationViewModel: ObservableObject {
         isLoading = false
     }
     
-    func sendMessage() async {
-        guard !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+    func sendMessage(content: String) async {
+        print("🟢 [ConversationViewModel] sendMessage() - ENTRY")
+        print("🟢 [ConversationViewModel] content: '\(content)'")
+        print("🟢 [ConversationViewModel] conversationId: \(conversation.id)")
         
-        let content = messageText
-        messageText = ""
-        
+        print("🟢 [ConversationViewModel] Setting isSending = true")
         isSending = true
         
         // Stop typing indicator
         if let userId = authService.currentUser?.id {
+            print("🟢 [ConversationViewModel] Stopping typing indicator for user: \(userId)")
             try? await presenceService.setTyping(
                 userId: userId,
                 conversationId: conversation.id,
                 isTyping: false
             )
+            print("🟢 [ConversationViewModel] Typing indicator stopped")
         }
         
+        print("🟢 [ConversationViewModel] Calling messageService.sendMessage()")
         do {
             let message = try await messageService.sendMessage(
                 conversationId: conversation.id,
@@ -129,16 +160,28 @@ class ConversationViewModel: ObservableObject {
                 mediaType: nil
             )
             
+            print("✅ [ConversationViewModel] Message sent successfully!")
+            print("✅ [ConversationViewModel]   messageId: \(message.id)")
+            print("✅ [ConversationViewModel]   status: \(message.status)")
+            
             // Optimistically add message
             if !messages.contains(where: { $0.id == message.id }) {
+                print("🟢 [ConversationViewModel] Adding message to local array")
                 messages.append(message)
+            } else {
+                print("⚠️ [ConversationViewModel] Message already exists in local array")
             }
         } catch {
+            print("❌ [ConversationViewModel] ERROR sending message: \(error)")
+            print("❌ [ConversationViewModel] Error type: \(type(of: error))")
+            print("❌ [ConversationViewModel] Error description: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             messageText = content // Restore text on error
         }
         
+        print("🟢 [ConversationViewModel] Setting isSending = false")
         isSending = false
+        print("🟢 [ConversationViewModel] sendMessage() - EXIT")
     }
     
     func onTypingChanged() {

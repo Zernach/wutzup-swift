@@ -32,10 +32,6 @@ class FirebaseNotificationService: NSObject, NotificationService {
     }
     
     func registerDeviceToken(_ token: Data) async throws {
-        // Convert token to string
-        let tokenString = token.map { String(format: "%02.2hhx", $0) }.joined()
-        print("APNs token: \(tokenString)")
-        
         // Firebase Messaging will handle this automatically
         Messaging.messaging().apnsToken = token
     }
@@ -51,8 +47,6 @@ class FirebaseNotificationService: NSObject, NotificationService {
 extension FirebaseNotificationService: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let fcmToken = fcmToken else { return }
-        
-        print("FCM token: \(fcmToken)")
         
         // Update token in Firestore
         Task {
@@ -76,10 +70,7 @@ extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         // Handle notification tap
-        let userInfo = response.notification.request.content.userInfo
-        
         // TODO: Navigate to conversation from notification data
-        print("Notification tapped: \(userInfo)")
         
         completionHandler()
     }

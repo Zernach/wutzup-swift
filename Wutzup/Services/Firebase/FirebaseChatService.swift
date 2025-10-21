@@ -84,7 +84,6 @@ class FirebaseChatService: ChatService {
                 .order(by: "updatedAt", descending: true)
                 .addSnapshotListener { snapshot, error in
                     guard let snapshot = snapshot else {
-                        print("Error observing conversations: \(error?.localizedDescription ?? "Unknown error")")
                         return
                     }
                     

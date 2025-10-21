@@ -39,7 +39,6 @@ class FirebaseAuthService: AuthenticationService, ObservableObject {
                     let user = try await self.ensureUserDocument(for: firebaseUser)
                     self.authStateSubject.send(user)
                 } catch {
-                    print("Error fetching user: \(error)")
                     self.authStateSubject.send(nil)
                 }
             }

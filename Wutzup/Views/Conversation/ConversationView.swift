@@ -55,9 +55,12 @@ struct ConversationView: View {
             MessageInputView(
                 text: $viewModel.messageText,
                 isSending: viewModel.isSending,
-                onSend: {
-                    Task {
-                        await viewModel.sendMessage()
+                onSend: { content in
+                    print("🔵 [ConversationView] Send button tapped")
+                    Task { @MainActor in
+                        print("🔵 [ConversationView] About to call sendMessage()")
+                        await viewModel.sendMessage(content: content)
+                        print("🔵 [ConversationView] sendMessage() completed")
                         scrollToBottom()
                     }
                 },
@@ -69,7 +72,7 @@ struct ConversationView: View {
         .navigationTitle(viewModel.conversation.displayName(currentUserId: appState.currentUser?.id ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            Task {
+            Task { @MainActor in
                 await viewModel.fetchMessages()
                 viewModel.startObserving()
             }

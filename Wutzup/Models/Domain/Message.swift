@@ -94,6 +94,7 @@ struct Message: Identifiable, Codable, Hashable {
     // Convert to Firestore data
     var firestoreData: [String: Any] {
         var data: [String: Any] = [
+            "id": id,  // Required by security rules
             "conversationId": conversationId,
             "senderId": senderId,
             "content": content,

@@ -75,7 +75,6 @@ class FirebasePresenceService: PresenceService {
             let listener = db.collection("presence")
                 .addSnapshotListener { snapshot, error in
                     guard let snapshot = snapshot else {
-                        print("Error observing typing: \(error?.localizedDescription ?? "Unknown error")")
                         return
                     }
                     

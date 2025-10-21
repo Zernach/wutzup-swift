@@ -145,26 +145,12 @@ struct NewChatView: View {
     private func handleUserSelection(_ user: User) {
         guard !isCreatingConversation else { return }
 
-        // DEBUG: Log the user being selected
-        print("🔍 [DEBUG] NewChatView.handleUserSelection - user selected")
-        print("🔍 [DEBUG] User object:")
-        print("🔍 [DEBUG]   - id:", user.id)
-        print("🔍 [DEBUG]   - displayName:", user.displayName)
-        print("🔍 [DEBUG]   - email:", user.email)
-
         isCreatingConversation = true
         creationErrorMessage = nil
 
         Task { @MainActor in
-            print("🔍 [DEBUG] Inside @MainActor Task - about to call createOrFetchConversation")
-            print("🔍 [DEBUG] Inside Task - user.id:", user.id)
-            print("🔍 [DEBUG] Inside Task - user.displayName:", user.displayName)
-            print("🔍 [DEBUG] Inside Task - user.email:", user.email)
-
             // Pass User object directly - @MainActor should prevent corruption
             let conversation = await createOrFetchConversation(user)
-
-            print("🔍 [DEBUG] After createOrFetchConversation call")
 
             isCreatingConversation = false
 

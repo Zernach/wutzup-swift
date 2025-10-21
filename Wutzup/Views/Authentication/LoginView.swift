@@ -80,7 +80,7 @@ struct LoginView: View {
                         }
                         
                         Button(action: {
-                            Task { await viewModel.login() }
+                            Task { @MainActor in await viewModel.login() }
                         }) {
                             if viewModel.isLoading {
                                 ProgressView()
@@ -122,7 +122,7 @@ struct LoginView: View {
         let trimmedPassword = viewModel.password.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPassword.isEmpty else { return }
         
-        Task { await viewModel.login() }
+        Task { @MainActor in await viewModel.login() }
     }
 }
 

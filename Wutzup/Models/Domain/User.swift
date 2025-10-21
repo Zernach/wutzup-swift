@@ -36,11 +36,6 @@ struct User: Identifiable, Codable, Hashable {
         self.fcmToken = fcmToken
         self.createdAt = createdAt
         self.lastSeen = lastSeen
-
-        // DEBUG: Validate on creation
-        if id.isEmpty {
-            print("⚠️ [WARNING] User created with EMPTY ID! displayName:", displayName, "email:", email)
-        }
     }
 
     // Initialize from Firestore document
@@ -48,7 +43,6 @@ struct User: Identifiable, Codable, Hashable {
         guard let data = document.data(),
               let email = data["email"] as? String,
               let displayName = data["displayName"] as? String else {
-            print("❌ [ERROR] User.init: Missing required fields in document \(document.documentID)")
             return nil
         }
 
@@ -62,7 +56,6 @@ struct User: Identifiable, Codable, Hashable {
 
         // Validate the ID is not empty
         guard !finalId.isEmpty else {
-            print("❌ [ERROR] User.init: Both storedId and documentID are empty for user \(displayName)")
             return nil
         }
 

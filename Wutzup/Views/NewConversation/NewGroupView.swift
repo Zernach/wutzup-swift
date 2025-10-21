@@ -181,17 +181,15 @@ struct NewGroupView: View {
         let name = trimmedGroupName
         let users = selectedUsers
         
-        Task {
+        Task { @MainActor in
             let conversation = await createGroupConversation(users, name)
-            await MainActor.run {
-                isCreatingGroup = false
-                
-                if let conversation = conversation {
-                    onGroupCreated(conversation)
-                } else {
-                    creationErrorMessage = "Please try again."
-                    showErrorAlert = true
-                }
+            isCreatingGroup = false
+            
+            if let conversation = conversation {
+                onGroupCreated(conversation)
+            } else {
+                creationErrorMessage = "Please try again."
+                showErrorAlert = true
             }
         }
     }

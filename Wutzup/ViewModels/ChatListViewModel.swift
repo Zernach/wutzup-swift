@@ -66,39 +66,21 @@ class ChatListViewModel: ObservableObject {
     }
 
     func createDirectConversation(with otherUserId: String, otherDisplayName: String, otherEmail: String, currentUser: User?) async -> Conversation? {
-        // DEBUG: Print received parameters
-        print("🔍 [DEBUG] createDirectConversation called with separate parameters")
-        print("🔍 [DEBUG] otherUserId parameter:", otherUserId)
-        print("🔍 [DEBUG] otherDisplayName parameter:", otherDisplayName)
-        print("🔍 [DEBUG] otherEmail parameter:", otherEmail)
-
         // Early validation of otherUserId
         guard !otherUserId.isEmpty else {
-            print("❌ [ERROR] otherUserId is EMPTY")
             errorMessage = "Unable to start chat. The selected user has an invalid ID."
             return nil
         }
-
-        print("🔍 [DEBUG] currentUser provided:", currentUser != nil)
 
         // Step 1: Resolve current user
         var resolvedUser: User?
         if let providedUser = currentUser {
             resolvedUser = providedUser
-            let providedId = providedUser.id
-            print("🔍 [DEBUG] Using provided currentUser:", providedId)
         } else {
             resolvedUser = authService.currentUser
-            if let authUser = authService.currentUser {
-                let authId = authUser.id
-                print("🔍 [DEBUG] Using authService.currentUser:", authId)
-            } else {
-                print("❌ [ERROR] authService.currentUser is nil")
-            }
         }
 
         guard let activeUser = resolvedUser else {
-            print("❌ [ERROR] No active user found")
             errorMessage = "Unable to start chat. Current user not found."
             return nil
         }
@@ -107,33 +89,20 @@ class ChatListViewModel: ObservableObject {
         let currentUserId = activeUser.id
         let currentDisplayName = activeUser.displayName
 
-        print("✅ [DEBUG] Active user resolved:", currentUserId)
-        print("🔍 [DEBUG] currentUserId:", currentUserId)
-        print("🔍 [DEBUG] otherUserId:", otherUserId)
-
         // Step 3: Validate current user ID
         guard !currentUserId.isEmpty else {
-            print("❌ [ERROR] currentUserId is empty")
             errorMessage = "Unable to start chat. Missing current user identifier."
             return nil
         }
 
         // Step 4: Check for self-chat
         guard otherUserId != currentUserId else {
-            print("❌ [ERROR] Attempting to chat with self")
-            print("❌ [ERROR] otherUserId:", otherUserId)
-            print("❌ [ERROR] currentUserId:", currentUserId)
             errorMessage = "You can't start a chat with yourself."
             return nil
         }
 
-        print("✅ [DEBUG] User validation passed")
-        print("🔍 [DEBUG] currentDisplayName:", currentDisplayName)
-        print("🔍 [DEBUG] otherDisplayName:", otherDisplayName)
-
         // Step 6: Create conversation
         do {
-            print("🔍 [DEBUG] Calling chatService.fetchOrCreateDirectConversation...")
             let conversation = try await chatService.fetchOrCreateDirectConversation(
                 userId: currentUserId,
                 otherUserId: otherUserId,
@@ -143,37 +112,28 @@ class ChatListViewModel: ObservableObject {
                 ]
             )
 
-            let convId = conversation.id
-            print("✅ [DEBUG] Conversation fetched/created:", convId)
-
             // Step 7: Ensure participant names are set
             var updatedConversation = conversation
             var needsUpdate = false
 
             if updatedConversation.participantNames[currentUserId] == nil {
-                print("🔍 [DEBUG] Adding missing currentUser name to conversation")
                 updatedConversation.participantNames[currentUserId] = currentDisplayName
                 needsUpdate = true
             }
 
             if updatedConversation.participantNames[otherUserId] == nil {
-                print("🔍 [DEBUG] Adding missing otherUser name to conversation")
                 updatedConversation.participantNames[otherUserId] = otherDisplayName
                 needsUpdate = true
             }
 
             if needsUpdate {
-                print("🔍 [DEBUG] Updating conversation with participant names...")
                 try? await chatService.updateConversation(updatedConversation)
-                print("✅ [DEBUG] Conversation updated successfully")
                 return updatedConversation
             }
 
-            print("✅ [DEBUG] Returning conversation (no update needed)")
             return conversation
         } catch let convError {
             let errorDesc = convError.localizedDescription
-            print("❌ [ERROR] Failed to create conversation:", errorDesc)
             errorMessage = errorDesc
             return nil
         }

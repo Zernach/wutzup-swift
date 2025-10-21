@@ -93,7 +93,6 @@ enum FirebaseConfig {
         let emulatorHost = firestoreEndpoint()
         
         if let emulatorHost {
-            print("⚠️ Configuring Firestore for Emulator @ \(emulatorHost)")
             settings.host = emulatorHost
             settings.cacheSettings = MemoryCacheSettings()
             settings.isSSLEnabled = false
@@ -107,9 +106,6 @@ enum FirebaseConfig {
     // Configure emulators for debug builds
     static func configureEmulators() {
         guard useEmulators else {
-            #if DEBUG
-            print("ℹ️ Firebase emulators disabled for this run.")
-            #endif
             return
         }
         
@@ -120,8 +116,6 @@ enum FirebaseConfig {
         if let storageConfig = storageEndpoint() {
             Storage.storage().useEmulator(withHost: storageConfig.host, port: storageConfig.port)
         }
-        
-        print("✅ Firebase Emulators configured")
     }
     
     private static func splitHostPort(_ address: String, defaultPort: Int) -> (host: String, port: Int) {

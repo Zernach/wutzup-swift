@@ -49,7 +49,7 @@ struct ChatListView: View {
                         Divider()
 
                         Button(role: .destructive, action: {
-                            Task {
+                            Task { @MainActor in
                                 try? await appState.authService.logout()
                             }
                         }) {
@@ -71,19 +71,10 @@ struct ChatListView: View {
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
                     createOrFetchConversation: { @MainActor user in
-                        print("🔍 [DEBUG] ChatListView @MainActor closure - ENTRY POINT")
-                        print("🔍 [DEBUG] Received User:")
-                        print("🔍 [DEBUG]   - id:", user.id)
-                        print("🔍 [DEBUG]   - displayName:", user.displayName)
-                        print("🔍 [DEBUG]   - email:", user.email)
-
                         // Get current user
                         guard let currentUser = appState.currentUser else {
-                            print("❌ [ERROR] No current user")
                             return nil
                         }
-
-                        print("🔍 [DEBUG] ChatListView - about to call createDirectConversation")
 
                         // Call with user properties
                         return await viewModel.createDirectConversation(
@@ -116,7 +107,7 @@ struct ChatListView: View {
                 )
             }
             .onAppear {
-                Task {
+                Task { @MainActor in
                     await viewModel.fetchConversations()
                     viewModel.startObserving()
                 }

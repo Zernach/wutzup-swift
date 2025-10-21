@@ -91,7 +91,7 @@ struct RegisterView: View {
                     }
                     
                     Button(action: {
-                        Task { await viewModel.register() }
+                        Task { @MainActor in await viewModel.register() }
                     }) {
                         if viewModel.isLoading {
                             ProgressView()
@@ -143,7 +143,7 @@ struct RegisterView: View {
         let trimmedPassword = viewModel.password.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPassword.isEmpty else { return }
         
-        Task { await viewModel.register() }
+        Task { @MainActor in await viewModel.register() }
     }
 }
 
