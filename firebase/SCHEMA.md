@@ -150,6 +150,7 @@ const usersRef = db.collection('users')
 |-------|------|----------|-------------|
 | `id` | string | Yes | Conversation ID (must match document ID) |
 | `participantIds` | string[] | Yes | Array of user IDs (min 2) |
+| `participantNames` | map | Yes | Map of userId -> displayName for quick access |
 | `isGroup` | boolean | Yes | True if 3+ participants |
 | `groupName` | string | No | Group chat name (required if isGroup) |
 | `groupImageUrl` | string | No | Group chat image URL |
@@ -157,6 +158,7 @@ const usersRef = db.collection('users')
 | `lastMessageTimestamp` | timestamp | No | Timestamp of last message |
 | `createdAt` | timestamp | Yes | Conversation creation timestamp |
 | `updatedAt` | timestamp | Yes | Last update timestamp |
+| `unreadCount` | number | Yes | Count of unread messages for the conversation |
 
 #### TypeScript Type
 
@@ -164,6 +166,7 @@ const usersRef = db.collection('users')
 interface Conversation {
   id: string;                    // Document ID
   participantIds: string[];      // Min 2 users
+  participantNames: { [userId: string]: string };  // userId -> displayName
   isGroup: boolean;              // true if participantIds.length > 2
   groupName?: string;
   groupImageUrl?: string;
@@ -171,17 +174,19 @@ interface Conversation {
   lastMessageTimestamp?: FirebaseFirestore.Timestamp;
   createdAt: FirebaseFirestore.Timestamp;
   updatedAt: FirebaseFirestore.Timestamp;
+  unreadCount: number;           // Count of unread messages
 }
 ```
 
 #### Python Type
 
 ```python
-from typing import TypedDict, Optional, List
+from typing import TypedDict, Optional, List, Dict
 
 class Conversation(TypedDict):
     id: str
     participantIds: List[str]
+    participantNames: Dict[str, str]  # userId -> displayName
     isGroup: bool
     groupName: Optional[str]
     groupImageUrl: Optional[str]
@@ -189,6 +194,7 @@ class Conversation(TypedDict):
     lastMessageTimestamp: Optional[SERVER_TIMESTAMP]
     createdAt: SERVER_TIMESTAMP
     updatedAt: SERVER_TIMESTAMP
+    unreadCount: int
 ```
 
 #### Example Document
@@ -197,11 +203,16 @@ class Conversation(TypedDict):
 {
   "id": "conv_xyz789",
   "participantIds": ["user_abc123", "user_def456"],
+  "participantNames": {
+    "user_abc123": "Alice Smith",
+    "user_def456": "Bob Jones"
+  },
   "isGroup": false,
   "lastMessage": "Hey! How are you?",
   "lastMessageTimestamp": "2025-10-21T15:30:00Z",
   "createdAt": "2025-10-20T10:00:00Z",
-  "updatedAt": "2025-10-21T15:30:00Z"
+  "updatedAt": "2025-10-21T15:30:00Z",
+  "unreadCount": 0
 }
 ```
 

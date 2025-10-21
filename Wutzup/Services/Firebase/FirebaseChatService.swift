@@ -61,11 +61,32 @@ class FirebaseChatService: ChatService {
             groupName: groupName
         )
         
-        try await db.collection("conversations")
-            .document(conversation.id)
-            .setData(conversation.firestoreData)
+        // Debug: Print conversation data before sending to Firestore
+        print("🔍 Creating conversation with ID: \(conversation.id)")
+        print("🔍 Participant IDs: \(conversation.participantIds)")
+        print("🔍 Participant Names: \(conversation.participantNames)")
+        print("🔍 Is Group: \(conversation.isGroup)")
+        print("🔍 Firestore Data Keys: \(await conversation.firestoreData.keys.sorted())")
+        print("🔍 Current User ID: \(currentUserId)")
+        print("🔍 Current user in participants: \(conversation.participantIds.contains(currentUserId))")
         
-        return conversation
+        do {
+            try await db.collection("conversations")
+                .document(conversation.id)
+                .setData(conversation.firestoreData)
+            
+            print("✅ Successfully created conversation: \(conversation.id)")
+            return conversation
+        } catch {
+            print("❌ Failed to create conversation: \(error)")
+            print("❌ Error details: \(error.localizedDescription)")
+            if let nsError = error as NSError? {
+                print("❌ Error domain: \(nsError.domain)")
+                print("❌ Error code: \(nsError.code)")
+                print("❌ Error userInfo: \(nsError.userInfo)")
+            }
+            throw error
+        }
     }
     
     nonisolated func fetchConversations(userId: String) async throws -> [Conversation] {

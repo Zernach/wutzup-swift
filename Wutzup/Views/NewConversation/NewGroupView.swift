@@ -6,22 +6,22 @@
 //
 
 import SwiftUI
+import Combine
 
 struct NewGroupView: View {
     @StateObject private var userPickerViewModel: UserPickerViewModel
+    @ObservedObject var chatListViewModel: ChatListViewModel
     
-    let createGroupConversation: ([User], String) async -> Conversation?
     let onGroupCreated: (Conversation) -> Void
     
     @State private var selectedUserIds: Set<String> = []
     @State private var groupName: String = ""
     @State private var isCreatingGroup = false
-    @State private var creationErrorMessage: String?
     @State private var showErrorAlert = false
     
     init(userService: UserService,
          currentUserId: String?,
-         createGroupConversation: @escaping ([User], String) async -> Conversation?,
+         chatListViewModel: ChatListViewModel,
          onGroupCreated: @escaping (Conversation) -> Void) {
         _userPickerViewModel = StateObject(
             wrappedValue: UserPickerViewModel(
@@ -29,7 +29,7 @@ struct NewGroupView: View {
                 currentUserId: currentUserId
             )
         )
-        self.createGroupConversation = createGroupConversation
+        self.chatListViewModel = chatListViewModel
         self.onGroupCreated = onGroupCreated
     }
     
@@ -118,10 +118,12 @@ struct NewGroupView: View {
                 }
             }
         }
-        .alert("Unable to Create Group", isPresented: $showErrorAlert, presenting: creationErrorMessage) { _ in
-            Button("OK", role: .cancel) { }
-        } message: { message in
-            Text(message)
+        .alert("Unable to Create Group", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) {
+                chatListViewModel.errorMessage = nil
+            }
+        } message: {
+            Text(chatListViewModel.errorMessage ?? "Please try again.")
         }
     }
     
@@ -173,22 +175,39 @@ struct NewGroupView: View {
     }
     
     private func handleCreateGroup() {
-        guard canCreateGroup else { return }
+        guard canCreateGroup else {
+            chatListViewModel.errorMessage = "Please select at least 2 people and provide a group name."
+            showErrorAlert = true
+            return
+        }
+        
+        // Additional validation
+        if selectedUsers.count < 2 {
+            chatListViewModel.errorMessage = "Please select at least 2 people to create a group chat."
+            showErrorAlert = true
+            return
+        }
         
         isCreatingGroup = true
-        creationErrorMessage = nil
+        chatListViewModel.errorMessage = nil
         
         let name = trimmedGroupName
         let users = selectedUsers
         
+        print("🔍 Creating group with \(users.count) selected users")
+        print("🔍 Selected user IDs: \(users.map { $0.id })")
+        
         Task { @MainActor in
-            let conversation = await createGroupConversation(users, name)
+            let conversation = await chatListViewModel.createGroupConversation(
+                with: users,
+                groupName: name,
+                currentUser: nil
+            )
             isCreatingGroup = false
             
             if let conversation = conversation {
                 onGroupCreated(conversation)
             } else {
-                creationErrorMessage = "Please try again."
                 showErrorAlert = true
             }
         }
@@ -196,23 +215,68 @@ struct NewGroupView: View {
 }
 
 #Preview {
-    NavigationStack {
+    let authService = PreviewAuthService()
+    let chatService = PreviewChatService()
+    let userService = PreviewUserService()
+    let viewModel = ChatListViewModel(chatService: chatService, authService: authService)
+    
+    return NavigationStack {
         NewGroupView(
-            userService: PreviewUserService(),
+            userService: userService,
             currentUserId: "current",
-            createGroupConversation: { users, name in
-                var names: [String: String] = ["current": "Me"]
-                users.forEach { names[$0.id] = $0.displayName }
-                return Conversation(
-                    participantIds: ["current"] + users.map(\.id),
-                    participantNames: names,
-                    isGroup: true,
-                    groupName: name
-                )
-            },
+            chatListViewModel: viewModel,
             onGroupCreated: { _ in }
         )
     }
+}
+
+private final class PreviewAuthService: AuthenticationService {
+    var currentUser: User? = User(id: "current", email: "me@test.com", displayName: "Me")
+    
+    var authStatePublisher: AnyPublisher<User?, Never> {
+        Just(currentUser).eraseToAnyPublisher()
+    }
+    
+    func register(email: String, password: String, displayName: String) async throws -> User {
+        User(id: "current", email: email, displayName: displayName)
+    }
+    
+    func login(email: String, password: String) async throws -> User {
+        User(id: "current", email: email, displayName: "Me")
+    }
+    
+    func logout() async throws {}
+    
+    func updateProfile(displayName: String?, profileImageUrl: String?) async throws {}
+}
+
+private final class PreviewChatService: ChatService {
+    func createConversation(withUserIds userIds: [String], isGroup: Bool, groupName: String?, participantNames: [String: String]) async throws -> Conversation {
+        Conversation(
+            participantIds: userIds,
+            participantNames: participantNames,
+            isGroup: isGroup,
+            groupName: groupName
+        )
+    }
+    
+    func fetchConversations(userId: String) async throws -> [Conversation] {
+        []
+    }
+    
+    func observeConversations(userId: String) -> AsyncStream<Conversation> {
+        AsyncStream { _ in }
+    }
+    
+    func fetchOrCreateDirectConversation(userId: String, otherUserId: String, participantNames: [String: String]) async throws -> Conversation {
+        Conversation(
+            participantIds: [userId, otherUserId],
+            participantNames: participantNames,
+            isGroup: false
+        )
+    }
+    
+    func updateConversation(_ conversation: Conversation) async throws {}
 }
 
 private final class PreviewUserService: UserService {

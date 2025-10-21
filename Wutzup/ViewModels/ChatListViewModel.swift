@@ -140,6 +140,12 @@ class ChatListViewModel: ObservableObject {
     }
 
     func createGroupConversation(with users: [User], groupName: String, currentUser: User?) async -> Conversation? {
+        // Validate that we have at least 2 other users (+ current user = 3 minimum for group)
+        guard users.count >= 2 else {
+            errorMessage = "Please select at least 2 people to create a group chat."
+            return nil
+        }
+        
         var participants = Set(users.map { $0.id })
         var participantNames = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0.displayName) })
 
@@ -149,6 +155,14 @@ class ChatListViewModel: ObservableObject {
         }
 
         let participantIds = Array(participants).sorted()
+        
+        // Final safety check - must have at least 2 participants total for Firestore rules
+        guard participantIds.count >= 2 else {
+            errorMessage = "A conversation must have at least 2 participants."
+            return nil
+        }
+        
+        print("🔍 Creating group with \(participantIds.count) participants: \(participantIds)")
         
         do {
             return try await chatService.createConversation(

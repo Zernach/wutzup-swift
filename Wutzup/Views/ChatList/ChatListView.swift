@@ -93,14 +93,7 @@ struct ChatListView: View {
                 NewGroupView(
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
-                    createGroupConversation: { users, groupName in
-                        let currentUser = await MainActor.run { appState.currentUser }
-                        return await viewModel.createGroupConversation(
-                            with: users,
-                            groupName: groupName,
-                            currentUser: currentUser
-                        )
-                    },
+                    chatListViewModel: viewModel,
                     onGroupCreated: { conversation in
                         navigateToConversation(conversation)
                     }
