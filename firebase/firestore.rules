@@ -51,8 +51,8 @@ service cloud.firestore {
         && request.resource.data.id == resource.data.id  // Can't change ID
         && request.resource.data.email == resource.data.email;  // Can't change email
 
-      // Users cannot delete their profiles (handle via Cloud Functions)
-      allow delete: if false;
+      // Users can delete their own profiles
+      allow delete: if isAuthenticated() && isOwner(userId);
     }
 
     // ========================================
