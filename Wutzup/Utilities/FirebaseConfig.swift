@@ -20,13 +20,20 @@ enum FirebaseConfig {
         #endif
     }()
     
-    // Configure Firestore settings
+    // Configure Firestore settings (must be called BEFORE accessing Firestore)
     static func configureFirestore() {
         let settings = FirestoreSettings()
         
-        // Enable offline persistence
-        settings.isPersistenceEnabled = true
-        settings.cacheSizeBytes = FirestoreCacheSizeUnlimited
+        #if DEBUG
+        // Debug mode: Use emulator with memory cache
+        print("⚠️ Configuring Firestore for Emulator")
+        settings.host = "localhost:8080"
+        settings.cacheSettings = MemoryCacheSettings()
+        settings.isSSLEnabled = false
+        #else
+        // Production mode: Enable offline persistence with unlimited cache
+        settings.cacheSettings = PersistentCacheSettings()
+        #endif
         
         Firestore.firestore().settings = settings
     }
@@ -35,13 +42,6 @@ enum FirebaseConfig {
     static func configureEmulators() {
         #if DEBUG
         print("⚠️ Configuring Firebase Emulators")
-        
-        // Firestore emulator
-        let settings = Firestore.firestore().settings
-        settings.host = "localhost:8080"
-        settings.cacheSettings = MemoryCacheSettings()
-        settings.isSSLEnabled = false
-        Firestore.firestore().settings = settings
         
         // Auth emulator
         Auth.auth().useEmulator(withHost: "localhost", port: 9099)

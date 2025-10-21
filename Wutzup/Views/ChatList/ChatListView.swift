@@ -38,7 +38,7 @@ struct ChatListView: View {
                         Button(action: {
                             // TODO: Navigate to user search/new chat
                         }) {
-                            Label("New Chat", systemImage: "message.badge.plus")
+                            Label("New Chat", systemImage: "square.and.pencil")
                         }
                         
                         Button(action: {

@@ -16,7 +16,7 @@ enum MessageStatus: String, Codable {
     case failed
 }
 
-struct Message: Identifiable, Codable {
+struct Message: Identifiable, Codable, Hashable {
     let id: String
     let conversationId: String
     let senderId: String

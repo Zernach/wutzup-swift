@@ -11,7 +11,7 @@ import FirebaseFirestore
 import Combine
 
 @MainActor
-class FirebaseAuthService: AuthenticationService {
+class FirebaseAuthService: AuthenticationService, ObservableObject {
     private let auth = Auth.auth()
     private let db = Firestore.firestore()
     

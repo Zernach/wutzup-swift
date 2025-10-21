@@ -5,6 +5,7 @@
 //  Created on October 21, 2025
 //
 
+import Foundation
 import SwiftUI
 import Combine
 
