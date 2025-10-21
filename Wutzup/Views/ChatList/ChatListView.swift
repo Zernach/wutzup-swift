@@ -110,12 +110,19 @@ struct ChatListView: View {
             }
             .onAppear {
                 Task { @MainActor in
-                    await viewModel.fetchConversations()
+                    // Only fetch if not already loading and conversations haven't been loaded
+                    // AppState now handles the initial load on auth success
+                    if !viewModel.isLoading && viewModel.conversations.isEmpty {
+                        await viewModel.fetchConversations()
+                    }
+                    // Always ensure observing is active when view appears
                     viewModel.startObserving()
                 }
             }
             .onDisappear {
-                viewModel.stopObserving()
+                // Note: We don't stop observing on disappear anymore
+                // This ensures conversations continue to update in the background
+                // viewModel.stopObserving()
             }
         }
         .toolbarBackground(AppConstants.Colors.background, for: .navigationBar)

@@ -14,8 +14,10 @@ import FirebaseAuth
 class FirebaseNotificationService: NSObject, NotificationService {
     private let db = Firestore.firestore()
     
-    // Closure to handle notification taps (set by AppState)
+    // Closures set by AppState
     var onNotificationTap: ((String) -> Void)?
+    // 🔥 FIX: Callback for FCM token updates (handled by AppState to avoid race condition)
+    var onFCMTokenReceived: ((String) -> Void)?
     
     override init() {
         super.init()
@@ -61,20 +63,11 @@ extension FirebaseNotificationService: MessagingDelegate {
             return
         }
         
-        print("🔑 FCM Token received: \(fcmToken.prefix(20))...")
+        print("🔑 [NotificationService] FCM Token received: \(fcmToken.prefix(20))...")
         
-        // Update token in Firestore
-        Task {
-            if let userId = Auth.auth().currentUser?.uid {
-                do {
-                    try await updateFCMToken(userId: userId, token: fcmToken)
-                } catch {
-                    print("❌ Failed to save FCM token: \(error)")
-                }
-            } else {
-                print("⚠️ No authenticated user to save FCM token")
-            }
-        }
+        // 🔥 FIX: Route token through AppState to handle auth race condition
+        // AppState will save the token when auth is ready
+        onFCMTokenReceived?(fcmToken)
     }
 }
 

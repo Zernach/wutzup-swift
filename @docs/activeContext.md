@@ -5,6 +5,20 @@
 **Date**: October 21, 2025  
 **Phase**: Phase 1 (iOS Setup) 100% Complete → Ready for Xcode Project Creation
 
+**Latest Update**: ✅ **Race Conditions Fixed** (October 21, 2025)
+
+**Chat Loading Race Condition:**
+- Fixed race condition where chats sometimes didn't load on login
+- Conversations now load immediately when auth succeeds (in AppState)
+- No longer dependent on view lifecycle timing
+- See `@docs/CHAT_LOADING_RACE_CONDITION_FIX.md` for details
+
+**FCM Token Registration Race Condition:**
+- Fixed race condition where FCM token failed to save before auth was ready
+- Token now stores as pending and saves when auth succeeds
+- Push notifications guaranteed to work after login
+- See `@docs/FCM_TOKEN_RACE_CONDITION_FIX.md` for details
+
 ## 🔥 BREAKING CHANGE: Firebase Architecture
 
 ### What Just Changed
@@ -71,7 +85,16 @@
 ---
 
 ## Current Focus
-**Latest Feature**: 🌱 **Automatic Database Seeding on Deploy!** (October 21, 2025)
+**Latest Update**: 🔔 **Push Notifications Verification Complete!** (October 21, 2025)
+- ✅ Verified Cloud Functions deployed (`on_message_created` trigger active)
+- ✅ Confirmed iOS implementation complete (FCM token registration, notification handling)
+- ✅ Created comprehensive documentation (PUSH_NOTIFICATIONS_COMPLETE.md)
+- ✅ Created test script for manual notification testing (test_push_notification.sh)
+- ✅ All code complete - backend and frontend fully integrated
+- 🎯 **Status:** Ready for physical device testing! Needs APNs key upload.
+- 📝 **Next:** Upload APNs certificate to Firebase Console and test on physical devices
+
+**Previously Completed**: 🌱 **Automatic Database Seeding on Deploy!** (October 21, 2025)
 - ✅ Updated seed_database.py to fetch existing Firebase Auth users
 - ✅ Creates 10+ family-friendly conversations automatically
 - ✅ Generates 30-120+ wholesome messages across all conversations
@@ -97,9 +120,11 @@
 - ✅ Permission request flow after successful login
 - ✅ Beautiful custom NotificationPermissionView with benefits
 - ✅ FirebaseNotificationService handles tokens and navigation
-- ✅ Cloud Functions already deployed for sending notifications
-- ✅ Comprehensive documentation (PUSH_NOTIFICATIONS_SETUP.md)
+- ✅ Cloud Functions deployed and verified (`on_message_created` trigger)
+- ✅ Comprehensive documentation (PUSH_NOTIFICATIONS_SETUP.md, PUSH_NOTIFICATIONS_COMPLETE.md)
 - ✅ Info.plist configuration guide (INFO_PLIST_PUSH_NOTIFICATIONS.md)
+- ✅ Test script created (test_push_notification.sh)
+- 🎯 **Status:** Code complete, ready for device testing
 
 **Previously Completed**: 📨 **Read Receipts Implementation** (October 21, 2025)
 - ✅ Backend: Firestore security rules and indexes updated

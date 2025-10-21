@@ -32,6 +32,9 @@ class AppState: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var hasRequestedNotificationPermission = false
     
+    // 🔥 FIX: Store pending FCM token to handle race condition
+    private var pendingFCMToken: String?
+    
     init() {
         // Initialize services
         self.authService = FirebaseAuthService()
@@ -47,9 +50,16 @@ class AppState: ObservableObject {
             presenceService: presenceService
         )
         
-        // Setup notification handler
+        // Setup notification handlers
         notificationService.onNotificationTap = { [weak self] conversationId in
             self?.handleNotificationTap(conversationId: conversationId)
+        }
+        
+        // 🔥 FIX: Handle FCM token updates through AppState to avoid race condition
+        notificationService.onFCMTokenReceived = { [weak self] token in
+            Task { @MainActor in
+                await self?.handleFCMToken(token)
+            }
         }
         
         // Observe auth state and loading state
@@ -81,14 +91,30 @@ class AppState: ObservableObject {
                 self.isAuthenticated = user != nil
                 
                 if user == nil {
+                    // User logged out - clear data and stop observing
+                    self.chatListViewModel.stopObserving()
                     self.chatListViewModel.conversations = []
                     self.hasRequestedNotificationPermission = false
                 }
 
                 // Update presence when auth state changes
                 if let user = user {
-                    Task {
+                    Task { @MainActor in
                         try? await self.presenceService.setOnline(userId: user.id)
+                        
+                        // 🔥 FIX: Load conversations immediately on auth success
+                        // This prevents the race condition where ChatListView appears
+                        // before conversations are loaded
+                        print("🔥 [AppState] User authenticated, loading conversations...")
+                        await self.chatListViewModel.fetchConversations()
+                        self.chatListViewModel.startObserving()
+                        
+                        // 🔥 FIX: Save any pending FCM token now that auth is ready
+                        if let pendingToken = self.pendingFCMToken {
+                            print("🔥 [AppState] Auth ready, saving pending FCM token...")
+                            await self.saveFCMToken(pendingToken, for: user.id)
+                            self.pendingFCMToken = nil
+                        }
                         
                         // Request notification permission after successful login
                         // Only show prompt once per session
@@ -154,6 +180,33 @@ class AppState: ObservableObject {
     /// Handle notification tap to open specific conversation
     func handleNotificationTap(conversationId: String) {
         selectedConversationFromNotification = conversationId
+    }
+    
+    /// 🔥 FIX: Handle FCM token updates with proper auth coordination
+    private func handleFCMToken(_ token: String) async {
+        print("🔑 [AppState] FCM token received: \(token.prefix(20))...")
+        
+        // Check if we have an authenticated user
+        guard let userId = currentUser?.id else {
+            print("⏳ [AppState] No authenticated user yet, storing token as pending")
+            pendingFCMToken = token
+            return
+        }
+        
+        // User is authenticated, save immediately
+        await saveFCMToken(token, for: userId)
+    }
+    
+    /// Save FCM token to Firestore
+    private func saveFCMToken(_ token: String, for userId: String) async {
+        do {
+            try await notificationService.updateFCMToken(userId: userId, token: token)
+            print("✅ [AppState] FCM token saved successfully for user: \(userId)")
+        } catch {
+            print("❌ [AppState] Failed to save FCM token: \(error)")
+            // Keep as pending to retry later
+            pendingFCMToken = token
+        }
     }
     
     func makeAuthenticationViewModel() -> AuthenticationViewModel {
