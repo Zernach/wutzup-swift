@@ -37,5 +37,12 @@
       "port": 4000
     },
     "singleProjectMode": true
+  },
+  "hooks": {
+    "postdeploy": {
+      "firestore": [
+        "python3 seed_database.py --project-id $GCLOUD_PROJECT --auto-confirm"
+      ]
+    }
   }
 }

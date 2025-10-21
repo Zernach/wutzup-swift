@@ -8,14 +8,15 @@ This directory contains all Firebase configuration files, Cloud Functions, and d
 firebase/
 ├── README.md                  # This file
 ├── SCHEMA.md                  # Complete Firestore schema documentation
+├── SEEDING.md                 # Database seeding documentation (NEW!)
 ├── firebase.json              # Firebase project configuration
 ├── firestore.rules            # Firestore security rules
 ├── firestore.indexes.json     # Firestore database indexes
-├── seed_database.py          # Database seeding script for testing
+├── seed_database.py           # Database seeding script (auto-runs on deploy!)
 └── functions/                 # Cloud Functions
-    ├── main.py               # Cloud Functions implementation
-    ├── requirements.txt      # Python dependencies
-    └── venv/                 # Virtual environment (not tracked in git)
+    ├── main.py                # Cloud Functions implementation
+    ├── requirements.txt       # Python dependencies
+    └── venv/                  # Virtual environment (not tracked in git)
 ```
 
 ## 🚀 Quick Start
@@ -97,24 +98,54 @@ firebase deploy --only firestore:indexes
 
 ### Seeding Test Data
 
-Use the `seed_database.py` script to populate your database with test data:
+🎉 **NEW: Automatic Seeding on Deploy!**
+
+The database is now automatically seeded with family-friendly test data whenever you run `firebase deploy`. The script:
+
+1. ✅ Fetches all existing Firebase Authentication users
+2. ✅ Creates 10+ conversations between them
+3. ✅ Adds family-friendly messages (30-120+ messages total)
+4. ✅ Sets up presence data for all users
+
+**No users will be created** - you must have at least 2 existing Firebase Auth users first!
+
+#### Automatic Seeding
 
 ```bash
-# Install dependencies
+cd firebase
+firebase deploy
+# or
+firebase deploy --only firestore
+
+# ✅ Database automatically seeded after Firestore deployment!
+```
+
+#### Manual Seeding
+
+You can also run the `seed_database.py` script manually:
+
+```bash
+# Install dependencies (if needed)
 pip install firebase-admin
 
 # Seed local emulator
-python seed_database.py --emulator --clear
+python seed_database.py --emulator
 
-# Seed production (⚠️ use with caution!)
+# Seed production
+python seed_database.py --project-id YOUR_PROJECT_ID
+
+# Clear and reseed (⚠️ deletes existing conversations/messages!)
 python seed_database.py --project-id YOUR_PROJECT_ID --clear
 ```
 
 **Test Data Created:**
-- 4 test users (Alice, Bob, Charlie, Diana)
-- 3 conversations (2 one-on-one, 1 group chat)
-- Sample messages in each conversation
+- Uses all existing Firebase Auth users
+- 10+ conversations (one-on-one and group chats)
+- 30-120+ family-friendly messages across all conversations
+- Group chats with fun names: "Family Chat", "Book Club", "Recipe Exchange", etc.
 - Presence data for all users
+
+**📖 For complete seeding documentation, see [SEEDING.md](./SEEDING.md)**
 
 ## ☁️ Cloud Functions
 
