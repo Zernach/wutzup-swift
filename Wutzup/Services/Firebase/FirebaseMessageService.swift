@@ -13,10 +13,11 @@ class FirebaseMessageService: MessageService {
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
     
-    func sendMessage(conversationId: String, content: String, mediaUrl: String?, mediaType: String?) async throws -> Message {
+    func sendMessage(conversationId: String, content: String, mediaUrl: String?, mediaType: String?, messageId: String?) async throws -> Message {
         print("🔥 [FirebaseMessageService] sendMessage() - ENTRY")
         print("🔥 [FirebaseMessageService] conversationId: \(conversationId)")
         print("🔥 [FirebaseMessageService] content: '\(content)'")
+        print("🔥 [FirebaseMessageService] messageId: \(messageId ?? "nil (will generate)")")
         
         guard let currentUserId = auth.currentUser?.uid else {
             print("❌ [FirebaseMessageService] ERROR: User not authenticated")
@@ -31,14 +32,16 @@ class FirebaseMessageService: MessageService {
         let senderName = userDoc.data()?["displayName"] as? String
         print("🔥 [FirebaseMessageService] senderName: \(senderName ?? "nil")")
         
-        // Create message with .sending status for optimistic UI
+        // Create message with provided ID or generate new one
+        // Use .sending status initially, will update to .sent after successful write
         var message = Message(
+            id: messageId ?? UUID().uuidString,  // Use provided ID for optimistic updates
             conversationId: conversationId,
             senderId: currentUserId,
             senderName: senderName,
             content: content,
             timestamp: Date(),
-            status: .sending,  // Optimistic local status
+            status: .sending,  // Start with sending status
             mediaUrl: mediaUrl,
             mediaType: mediaType,
             isFromCurrentUser: true

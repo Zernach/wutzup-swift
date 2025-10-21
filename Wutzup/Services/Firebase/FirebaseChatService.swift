@@ -13,7 +13,7 @@ class FirebaseChatService: ChatService {
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
     
-    func createConversation(
+    nonisolated func createConversation(
         withUserIds userIds: [String],
         isGroup: Bool = false,
         groupName: String? = nil,
@@ -68,7 +68,7 @@ class FirebaseChatService: ChatService {
         return conversation
     }
     
-    func fetchConversations(userId: String) async throws -> [Conversation] {
+    nonisolated func fetchConversations(userId: String) async throws -> [Conversation] {
         let snapshot = try await db.collection("conversations")
             .whereField("participantIds", arrayContains: userId)
             .order(by: "updatedAt", descending: true)
@@ -77,7 +77,7 @@ class FirebaseChatService: ChatService {
         return snapshot.documents.compactMap { Conversation(from: $0) }
     }
     
-    func observeConversations(userId: String) -> AsyncStream<Conversation> {
+    nonisolated func observeConversations(userId: String) -> AsyncStream<Conversation> {
         return AsyncStream { continuation in
             let listener = db.collection("conversations")
                 .whereField("participantIds", arrayContains: userId)
@@ -105,7 +105,7 @@ class FirebaseChatService: ChatService {
         }
     }
     
-    func fetchOrCreateDirectConversation(
+    nonisolated func fetchOrCreateDirectConversation(
         userId: String,
         otherUserId: String,
         participantNames: [String: String] = [:]
@@ -133,7 +133,7 @@ class FirebaseChatService: ChatService {
         )
     }
     
-    func updateConversation(_ conversation: Conversation) async throws {
+    nonisolated func updateConversation(_ conversation: Conversation) async throws {
         try await db.collection("conversations")
             .document(conversation.id)
             .updateData(conversation.firestoreData)

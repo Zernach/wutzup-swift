@@ -8,7 +8,7 @@
 import Foundation
 import FirebaseFirestore
 
-enum MessageStatus: String, Codable {
+enum MessageStatus: String, Codable, Sendable {
     case sending
     case sent
     case delivered
@@ -16,7 +16,7 @@ enum MessageStatus: String, Codable {
     case failed
 }
 
-struct Message: Identifiable, Codable, Hashable {
+struct Message: Identifiable, Codable, Hashable, Sendable {
     let id: String
     let conversationId: String
     let senderId: String

@@ -159,29 +159,40 @@ func sendMessage(_ content: String) async throws {
 write to Firestore; it queues if offline and sends when online. No manual queue
 needed.
 
-### Optimistic Updates
+### Optimistic Updates (IMPLEMENTED ✅)
 
 Show changes immediately, reconcile with server later.
 
-**Pattern:**
-
-- User action triggers immediate UI update
-- Background task syncs with server
-- On success: update state with server response
-- On failure: revert or show error state
-
-**Example:**
+**Example Flow:**
 
 ```
 User taps Send
    ↓
-Show message immediately (status: .sending)
+Message appears immediately (🕐 sending...)
    ↓
-Send to server in background
+Send to Firebase in background
    ↓
-Success: Update to .sent
-Failure: Update to .failed, show retry option
+Success: Update to ✓ sent
+   ↓
+Recipient receives: Update to ✓✓ delivered
+   ↓
+Recipient reads: Update to ✓✓ read (blue)
+
+OR on failure:
+   ↓
+Failure: Update to ⚠️ failed (Tap to retry)
+   ↓
+User taps: Retry with same message ID
 ```
+
+**Benefits:**
+
+- ✅ **Instant feedback** - Messages appear immediately
+- ✅ **No perceived lag** - UI feels responsive even on slow networks
+- ✅ **Clear status** - Users see exactly what's happening with their messages
+- ✅ **Graceful failure** - Failed messages are clearly marked and can be retried
+- ✅ **No duplicates** - Same message ID ensures server and local versions match
+- ✅ **Offline support** - Works seamlessly with Firestore offline persistence
 
 ### Event-Driven Communication (Firestore Listeners)
 

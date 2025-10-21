@@ -137,44 +137,78 @@ class ConversationViewModel: ObservableObject {
         print("🟢 [ConversationViewModel] content: '\(content)'")
         print("🟢 [ConversationViewModel] conversationId: \(conversation.id)")
         
+        guard let currentUser = authService.currentUser else {
+            print("❌ [ConversationViewModel] No current user")
+            errorMessage = "User not authenticated"
+            return
+        }
+        
         print("🟢 [ConversationViewModel] Setting isSending = true")
         isSending = true
         
-        // Stop typing indicator
-        if let userId = authService.currentUser?.id {
-            print("🟢 [ConversationViewModel] Stopping typing indicator for user: \(userId)")
-            try? await presenceService.setTyping(
-                userId: userId,
-                conversationId: conversation.id,
-                isTyping: false
-            )
-            print("🟢 [ConversationViewModel] Typing indicator stopped")
-        }
+        // Create optimistic message immediately with .sending status
+        let optimisticMessage = Message(
+            conversationId: conversation.id,
+            senderId: currentUser.id,
+            senderName: currentUser.displayName,
+            content: content,
+            timestamp: Date(),
+            status: .sending,  // Optimistic status
+            isFromCurrentUser: true
+        )
         
+        print("🟢 [ConversationViewModel] Adding optimistic message to UI")
+        print("🟢 [ConversationViewModel]   messageId: \(optimisticMessage.id)")
+        print("🟢 [ConversationViewModel]   status: .sending")
+        
+        // Add to UI immediately (optimistic update)
+        messages.append(optimisticMessage)
+        messages.sort { $0.timestamp < $1.timestamp }
+        
+        // Stop typing indicator
+        print("🟢 [ConversationViewModel] Stopping typing indicator for user: \(currentUser.id)")
+        try? await presenceService.setTyping(
+            userId: currentUser.id,
+            conversationId: conversation.id,
+            isTyping: false
+        )
+        
+        // Send to server in background (pass the optimistic message ID)
         print("🟢 [ConversationViewModel] Calling messageService.sendMessage()")
         do {
-            let message = try await messageService.sendMessage(
+            let serverMessage = try await messageService.sendMessage(
                 conversationId: conversation.id,
                 content: content,
                 mediaUrl: nil,
-                mediaType: nil
+                mediaType: nil,
+                messageId: optimisticMessage.id  // Use same ID as optimistic message
             )
             
             print("✅ [ConversationViewModel] Message sent successfully!")
-            print("✅ [ConversationViewModel]   messageId: \(message.id)")
-            print("✅ [ConversationViewModel]   status: \(message.status)")
+            print("✅ [ConversationViewModel]   messageId: \(serverMessage.id)")
+            print("✅ [ConversationViewModel]   status: \(serverMessage.status)")
             
-            // Optimistically add message
-            if !messages.contains(where: { $0.id == message.id }) {
-                print("🟢 [ConversationViewModel] Adding message to local array")
-                messages.append(message)
-            } else {
-                print("⚠️ [ConversationViewModel] Message already exists in local array")
+            // Update optimistic message with server response
+            if let index = messages.firstIndex(where: { $0.id == optimisticMessage.id }) {
+                print("🟢 [ConversationViewModel] Updating optimistic message with server data")
+                messages[index] = serverMessage
             }
+            // Note: The Firestore listener will also pick up this message and may add it again,
+            // but the duplicate check in startObserving() will handle that
+            
         } catch {
             print("❌ [ConversationViewModel] ERROR sending message: \(error)")
             print("❌ [ConversationViewModel] Error type: \(type(of: error))")
             print("❌ [ConversationViewModel] Error description: \(error.localizedDescription)")
+            
+            // Update optimistic message to failed status
+            if let index = messages.firstIndex(where: { $0.id == optimisticMessage.id }) {
+                print("🟢 [ConversationViewModel] Updating message status to .failed")
+                var failedMessage = messages[index]
+                failedMessage.status = .failed
+                messages[index] = failedMessage
+            }
+            
             errorMessage = error.localizedDescription
             messageText = content // Restore text on error
         }
@@ -227,6 +261,48 @@ class ConversationViewModel: ObservableObject {
             return "\(name) is typing..."
         } else {
             return "Multiple people are typing..."
+        }
+    }
+    
+    func retryMessage(_ message: Message) async {
+        print("🟢 [ConversationViewModel] retryMessage() - ENTRY")
+        print("🟢 [ConversationViewModel] messageId: \(message.id)")
+        
+        // Update status to sending
+        if let index = messages.firstIndex(where: { $0.id == message.id }) {
+            var retryingMessage = messages[index]
+            retryingMessage.status = .sending
+            messages[index] = retryingMessage
+        }
+        
+        // Attempt to send again
+        do {
+            let serverMessage = try await messageService.sendMessage(
+                conversationId: conversation.id,
+                content: message.content,
+                mediaUrl: message.mediaUrl,
+                mediaType: message.mediaType,
+                messageId: message.id  // Use same ID
+            )
+            
+            print("✅ [ConversationViewModel] Message retry successful!")
+            
+            // Update with server response
+            if let index = messages.firstIndex(where: { $0.id == message.id }) {
+                messages[index] = serverMessage
+            }
+            
+        } catch {
+            print("❌ [ConversationViewModel] Message retry failed: \(error)")
+            
+            // Update back to failed status
+            if let index = messages.firstIndex(where: { $0.id == message.id }) {
+                var failedMessage = messages[index]
+                failedMessage.status = .failed
+                messages[index] = failedMessage
+            }
+            
+            errorMessage = error.localizedDescription
         }
     }
 }

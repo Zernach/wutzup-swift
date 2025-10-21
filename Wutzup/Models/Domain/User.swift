@@ -8,7 +8,7 @@
 import Foundation
 import FirebaseFirestore
 
-struct User: Identifiable, Codable, Hashable {
+struct User: Identifiable, Codable, Hashable, Sendable {
     let id: String
     var email: String
     var displayName: String

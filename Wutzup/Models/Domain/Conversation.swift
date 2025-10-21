@@ -8,7 +8,7 @@
 import Foundation
 import FirebaseFirestore
 
-struct Conversation: Identifiable, Codable, Hashable {
+struct Conversation: Identifiable, Codable, Hashable, Sendable {
     let id: String
     var participantIds: [String]
     var participantNames: [String: String] // userId -> displayName

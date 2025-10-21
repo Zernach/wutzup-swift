@@ -129,6 +129,15 @@ Saved**: 2-3 days → 2 hours = **90%+ time saved!**
 - [ ] Configure Firebase Auth settings (already enabled in Phase 1)
 - [ ] (Optional) Enable email verification
 
+#### Optimistic UI Updates ✅
+
+- [x] Messages appear instantly with .sending status
+- [x] Status updates when server confirms (.sent → .delivered → .read)
+- [x] Failed messages show error state with retry option
+- [x] Tap to retry failed messages
+- [x] Same message ID used for optimistic and server versions
+- [x] Visual status indicators in MessageBubbleView
+
 #### iOS
 
 - [ ] User model (struct)
@@ -202,7 +211,7 @@ backend auth to build!)
 
 - [ ] Test: Send message A→B (real-time via Firestore)
 - [ ] Test: Local persistence (SwiftData)
-- [ ] Test: Optimistic UI updates
+- [x] Test: Optimistic UI updates ✅
 
 **Dependencies**: Phase 2 complete **Blockers**: None **Time Saved**: 1 week (no
 backend/WebSocket to build!)
@@ -427,14 +436,14 @@ backend/WebSocket to build!)
 - [ ] Token management
 - [ ] Profile viewing/editing **Status**: Not started
 
-#### One-on-One Messaging ⏳
+#### One-on-One Messaging 🚧
 
 - [ ] Send text messages
 - [ ] Receive messages in real-time
 - [ ] Message persistence
-- [ ] Optimistic UI updates
+- [x] Optimistic UI updates ✅
 - [ ] Message timestamps
-- [ ] Message history **Status**: Not started
+- [ ] Message history **Status**: In progress (optimistic updates complete)
 
 #### Message Reliability ⏳
 

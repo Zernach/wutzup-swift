@@ -148,8 +148,9 @@ class ChatListViewModel: ObservableObject {
             participantNames[currentUser.id] = currentUser.displayName
         }
 
+        let participantIds = Array(participants).sorted()
+        
         do {
-            let participantIds = Array(participants).sorted()
             return try await chatService.createConversation(
                 withUserIds: participantIds,
                 isGroup: true,

@@ -24,8 +24,12 @@ struct ConversationView: View {
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(viewModel.messages) { message in
-                            MessageBubbleView(message: message)
-                                .id(message.id)
+                            MessageBubbleView(message: message) { failedMessage in
+                                Task { @MainActor in
+                                    await viewModel.retryMessage(failedMessage)
+                                }
+                            }
+                            .id(message.id)
                         }
                         
                         // Typing Indicator
@@ -146,9 +150,9 @@ private final class PreviewMessageService: MessageService {
         }
     }
     
-    func sendMessage(conversationId: String, content: String, mediaUrl: String?, mediaType: String?) async throws -> Message {
+    func sendMessage(conversationId: String, content: String, mediaUrl: String?, mediaType: String?, messageId: String?) async throws -> Message {
         Message(
-            id: UUID().uuidString,
+            id: messageId ?? UUID().uuidString,
             conversationId: conversationId,
             senderId: "1",
             senderName: "Alice",

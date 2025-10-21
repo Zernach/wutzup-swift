@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MessageBubbleView: View {
     let message: Message
+    var onRetry: ((Message) -> Void)?
     
     var body: some View {
         HStack {
@@ -49,6 +50,12 @@ struct MessageBubbleView: View {
                         : AppConstants.Colors.messageIncoming
                 )
                 .cornerRadius(AppConstants.Sizes.messageBubbleCornerRadius)
+                .onTapGesture {
+                    // Retry sending if message failed
+                    if message.status == .failed {
+                        onRetry?(message)
+                    }
+                }
             }
             
             if !message.isFromCurrentUser {
@@ -84,9 +91,14 @@ struct MessageBubbleView: View {
             .font(.caption2)
             .foregroundColor(AppConstants.Colors.accent)
         case .failed:
-            Image(systemName: "exclamationmark.circle")
-                .font(.caption2)
-                .foregroundColor(AppConstants.Colors.destructive)
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.circle")
+                    .font(.caption2)
+                    .foregroundColor(AppConstants.Colors.destructive)
+                Text("Tap to retry")
+                    .font(.caption2)
+                    .foregroundColor(AppConstants.Colors.destructive)
+            }
         }
     }
 }
