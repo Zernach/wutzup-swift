@@ -16,4 +16,18 @@ class FirebaseUserService: UserService {
         let users = snapshot.documents.compactMap { User(from: $0) }
         return users
     }
+    
+    func fetchUser(userId: String) async throws -> User {
+        let document = try await db.collection("users").document(userId).getDocument()
+        
+        guard let user = User(from: document) else {
+            throw NSError(
+                domain: "FirebaseUserService",
+                code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "User not found"]
+            )
+        }
+        
+        return user
+    }
 }

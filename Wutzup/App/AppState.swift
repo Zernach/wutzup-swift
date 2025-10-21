@@ -166,6 +166,14 @@ class AppState: ObservableObject {
             
             if granted {
                 print("✅ Notification permission granted!")
+                
+                // Register for remote notifications to get APNs token
+                #if os(iOS)
+                await MainActor.run {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+                print("📱 Registering for remote notifications...")
+                #endif
             } else {
                 print("❌ Notification permission denied")
             }

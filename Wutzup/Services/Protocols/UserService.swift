@@ -9,4 +9,5 @@ import Foundation
 
 protocol UserService: AnyObject {
     func fetchAllUsers() async throws -> [User]
+    func fetchUser(userId: String) async throws -> User
 }

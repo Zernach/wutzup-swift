@@ -274,4 +274,12 @@ private final class PreviewUserServiceForConversation: UserService {
             User(id: "3", email: "charlie@wutzup.app", displayName: "Charlie")
         ]
     }
+    
+    func fetchUser(userId: String) async throws -> User {
+        let users = try await fetchAllUsers()
+        guard let user = users.first(where: { $0.id == userId }) else {
+            throw NSError(domain: "PreviewUserService", code: 404, userInfo: [NSLocalizedDescriptionKey: "User not found"])
+        }
+        return user
+    }
 }
