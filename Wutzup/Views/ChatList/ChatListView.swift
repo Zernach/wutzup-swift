@@ -10,18 +10,28 @@ import SwiftUI
 struct ChatListView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel: ChatListViewModel
-    @State private var selectedConversation: Conversation?
+    @State private var navigationPath = NavigationPath()
     
-    init() {
-        let appState = AppState()
-        _viewModel = StateObject(wrappedValue: ChatListViewModel(
-            chatService: appState.chatService,
-            authService: appState.authService
-        ))
+    init(
+        chatService: ChatService? = nil,
+        authService: AuthenticationService? = nil
+    ) {
+        if let chatService, let authService {
+            _viewModel = StateObject(wrappedValue: ChatListViewModel(
+                chatService: chatService,
+                authService: authService
+            ))
+        } else {
+            let appState = AppState()
+            _viewModel = StateObject(wrappedValue: ChatListViewModel(
+                chatService: appState.chatService,
+                authService: appState.authService
+            ))
+        }
     }
     
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if viewModel.isLoading {
                     ProgressView("Loading conversations...")
@@ -35,15 +45,11 @@ struct ChatListView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        Button(action: {
-                            // TODO: Navigate to user search/new chat
-                        }) {
+                        Button(action: openNewChat) {
                             Label("New Chat", systemImage: "square.and.pencil")
                         }
                         
-                        Button(action: {
-                            // TODO: Navigate to new group
-                        }) {
+                        Button(action: openNewGroup) {
                             Label("New Group", systemImage: "person.3")
                         }
                         
@@ -60,6 +66,37 @@ struct ChatListView: View {
                         Image(systemName: "ellipsis.circle")
                     }
                 }
+            }
+            .navigationDestination(for: Conversation.self) { conversation in
+                ConversationView(conversation: conversation)
+            }
+            .navigationDestination(for: NewChatRoute.self) { _ in
+                NewChatView(
+                    userService: appState.userService,
+                    currentUserId: appState.currentUser?.id,
+                    createOrFetchConversation: { userId in
+                        await viewModel.createDirectConversation(with: userId, currentUserId: appState.currentUser?.id)
+                    },
+                    onConversationCreated: { conversation in
+                        navigateToConversation(conversation)
+                    }
+                )
+            }
+            .navigationDestination(for: NewGroupRoute.self) { _ in
+                NewGroupView(
+                    userService: appState.userService,
+                    currentUserId: appState.currentUser?.id,
+                    createGroupConversation: { userIds, groupName in
+                        await viewModel.createGroupConversation(
+                            with: userIds,
+                            groupName: groupName,
+                            currentUserId: appState.currentUser?.id
+                        )
+                    },
+                    onGroupCreated: { conversation in
+                        navigateToConversation(conversation)
+                    }
+                )
             }
             .onAppear {
                 Task {
@@ -101,9 +138,25 @@ struct ChatListView: View {
                 }
             }
         }
-        .navigationDestination(for: Conversation.self) { conversation in
-            ConversationView(conversation: conversation)
+    }
+    
+    private func openNewChat() {
+        navigationPath.append(NewChatRoute())
+    }
+    
+    private func openNewGroup() {
+        navigationPath.append(NewGroupRoute())
+    }
+    
+    @MainActor
+    private func navigateToConversation(_ conversation: Conversation) {
+        viewModel.upsertConversation(conversation)
+        
+        if !navigationPath.isEmpty {
+            navigationPath.removeLast()
         }
+        
+        navigationPath.append(conversation)
     }
 }
 
@@ -112,3 +165,5 @@ struct ChatListView: View {
         .environmentObject(AppState())
 }
 
+private struct NewChatRoute: Hashable {}
+private struct NewGroupRoute: Hashable {}

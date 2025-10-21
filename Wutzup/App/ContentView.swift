@@ -15,7 +15,10 @@ struct ContentView: View {
             if appState.isLoading {
                 ProgressView("Loading...")
             } else if appState.isAuthenticated {
-                ChatListView()
+                ChatListView(
+                    chatService: appState.chatService,
+                    authService: appState.authService
+                )
             } else {
                 LoginView()
             }
@@ -27,4 +30,3 @@ struct ContentView: View {
     ContentView()
         .environmentObject(AppState())
 }
-

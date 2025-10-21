@@ -30,14 +30,7 @@ class ChatListViewModel: ObservableObject {
         observationTask?.cancel()
         observationTask = Task {
             for await conversation in chatService.observeConversations(userId: userId) {
-                if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
-                    conversations[index] = conversation
-                } else {
-                    conversations.append(conversation)
-                }
-                
-                // Sort by last message timestamp
-                conversations.sort { ($0.lastMessageTimestamp ?? $0.updatedAt) > ($1.lastMessageTimestamp ?? $1.updatedAt) }
+                upsertConversation(conversation)
             }
         }
     }
@@ -62,12 +55,22 @@ class ChatListViewModel: ObservableObject {
         isLoading = false
     }
     
-    func createDirectConversation(with userId: String) async -> Conversation? {
-        guard let currentUserId = authService.currentUser?.id else { return nil }
+    func upsertConversation(_ conversation: Conversation) {
+        if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
+            conversations[index] = conversation
+        } else {
+            conversations.append(conversation)
+        }
+        
+        conversations.sort { ($0.lastMessageTimestamp ?? $0.updatedAt) > ($1.lastMessageTimestamp ?? $1.updatedAt) }
+    }
+    
+    func createDirectConversation(with userId: String, currentUserId: String?) async -> Conversation? {
+        guard let resolvedCurrentUserId = currentUserId ?? authService.currentUser?.id else { return nil }
         
         do {
             return try await chatService.fetchOrCreateDirectConversation(
-                userId: currentUserId,
+                userId: resolvedCurrentUserId,
                 otherUserId: userId
             )
         } catch {
@@ -75,5 +78,21 @@ class ChatListViewModel: ObservableObject {
             return nil
         }
     }
+    
+    func createGroupConversation(with userIds: [String], groupName: String, currentUserId: String?) async -> Conversation? {
+        var participants = Set(userIds)
+        if let currentUserId = currentUserId {
+            participants.insert(currentUserId)
+        }
+        do {
+            return try await chatService.createConversation(
+                withUserIds: Array(participants),
+                isGroup: true,
+                groupName: groupName
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
 }
-

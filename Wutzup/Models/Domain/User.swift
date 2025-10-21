@@ -31,26 +31,39 @@ struct User: Identifiable, Codable, Hashable {
     init?(from document: DocumentSnapshot) {
         guard let data = document.data(),
               let email = data["email"] as? String,
-              let displayName = data["displayName"] as? String,
-              let createdAtTimestamp = data["createdAt"] as? Timestamp else {
+              let displayName = data["displayName"] as? String else {
             return nil
         }
         
-        self.id = document.documentID
+        if let storedId = data["id"] as? String, !storedId.isEmpty {
+            self.id = storedId
+        } else {
+            self.id = document.documentID
+        }
         self.email = email
         self.displayName = displayName
         self.profileImageUrl = data["profileImageUrl"] as? String
         self.fcmToken = data["fcmToken"] as? String
-        self.createdAt = createdAtTimestamp.dateValue()
+        
+        if let createdAtTimestamp = data["createdAt"] as? Timestamp {
+            self.createdAt = createdAtTimestamp.dateValue()
+        } else if let createdAtDate = data["createdAt"] as? Date {
+            self.createdAt = createdAtDate
+        } else {
+            self.createdAt = Date()
+        }
         
         if let lastSeenTimestamp = data["lastSeen"] as? Timestamp {
             self.lastSeen = lastSeenTimestamp.dateValue()
+        } else if let lastSeenDate = data["lastSeen"] as? Date {
+            self.lastSeen = lastSeenDate
         }
     }
     
     // Convert to Firestore data
     var firestoreData: [String: Any] {
         var data: [String: Any] = [
+            "id": id,
             "email": email,
             "displayName": displayName,
             "createdAt": Timestamp(date: createdAt)
@@ -69,4 +82,3 @@ struct User: Identifiable, Codable, Hashable {
         return data
     }
 }
-

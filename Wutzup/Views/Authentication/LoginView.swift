@@ -42,15 +42,21 @@ struct LoginView: View {
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
+                        .autocorrectionDisabled(true)
                         .padding()
                         .background(Color(UIColor.systemGray6))
                         .cornerRadius(10)
                     
                     SecureField("Password", text: $viewModel.password)
                         .textContentType(.password)
+                        .submitLabel(.go)
+                        .autocorrectionDisabled(true)
                         .padding()
                         .background(Color(UIColor.systemGray6))
                         .cornerRadius(10)
+                        .onSubmit {
+                            submitLoginFromPasswordField()
+                        }
                     
                     if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
@@ -94,10 +100,16 @@ struct LoginView: View {
             }
         }
     }
+    
+    private func submitLoginFromPasswordField() {
+        let trimmedPassword = viewModel.password.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPassword.isEmpty else { return }
+        
+        Task { await viewModel.login() }
+    }
 }
 
 #Preview {
     LoginView()
         .environmentObject(FirebaseAuthService())
 }
-

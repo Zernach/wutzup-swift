@@ -39,6 +39,7 @@ struct RegisterView: View {
             VStack(spacing: 15) {
                 TextField("Display Name", text: $viewModel.displayName)
                     .textContentType(.name)
+                    .autocorrectionDisabled(true)
                     .padding()
                     .background(Color(UIColor.systemGray6))
                     .cornerRadius(10)
@@ -47,15 +48,21 @@ struct RegisterView: View {
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
+                    .autocorrectionDisabled(true)
                     .padding()
                     .background(Color(UIColor.systemGray6))
                     .cornerRadius(10)
                 
                 SecureField("Password", text: $viewModel.password)
                     .textContentType(.newPassword)
+                    .submitLabel(.go)
+                    .autocorrectionDisabled(true)
                     .padding()
                     .background(Color(UIColor.systemGray6))
                     .cornerRadius(10)
+                    .onSubmit {
+                        submitRegistrationFromPasswordField()
+                    }
                 
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
@@ -108,6 +115,13 @@ struct RegisterView: View {
             }
         }
     }
+    
+    private func submitRegistrationFromPasswordField() {
+        let trimmedPassword = viewModel.password.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPassword.isEmpty else { return }
+        
+        Task { await viewModel.register() }
+    }
 }
 
 #Preview {
@@ -116,4 +130,3 @@ struct RegisterView: View {
             .environmentObject(FirebaseAuthService())
     }
 }
-

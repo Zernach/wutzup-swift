@@ -19,6 +19,7 @@ class AppState: ObservableObject {
     let authService: FirebaseAuthService
     let messageService: FirebaseMessageService
     let chatService: FirebaseChatService
+    let userService: FirebaseUserService
     let presenceService: FirebasePresenceService
     let notificationService: FirebaseNotificationService
     
@@ -29,6 +30,7 @@ class AppState: ObservableObject {
         self.authService = FirebaseAuthService()
         self.messageService = FirebaseMessageService()
         self.chatService = FirebaseChatService()
+        self.userService = FirebaseUserService()
         self.presenceService = FirebasePresenceService()
         self.notificationService = FirebaseNotificationService()
         
@@ -60,4 +62,3 @@ class AppState: ObservableObject {
             .store(in: &cancellables)
     }
 }
-
