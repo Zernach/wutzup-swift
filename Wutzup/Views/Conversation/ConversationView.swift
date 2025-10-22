@@ -100,37 +100,69 @@ struct ConversationView: View {
                 }
             }
             
-            // Floating AI Suggestions Button
+            // Floating AI Suggestions Buttons
             VStack {
                 Spacer()
                 HStack {
-                    Button(action: {
-                        Task { @MainActor in
-                            await viewModel.generateAIResponseSuggestions()
-                        }
-                    }) {
-                        ZStack {
-                            // Glass morphism background
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(AppConstants.Colors.accent.opacity(0.3), lineWidth: 1)
-                                )
-                            
-                            if viewModel.isGeneratingAI {
-                                ProgressView()
-                                    .tint(AppConstants.Colors.accent)
-                            } else {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(AppConstants.Colors.accent)
+                    VStack(spacing: 12) {
+                        // CoreML AI Button (Bright Green)
+                        Button(action: {
+                            Task { @MainActor in
+                                await viewModel.generateCoreMLAIResponseSuggestions()
                             }
+                        }) {
+                            ZStack {
+                                // Glass morphism background
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(AppConstants.Colors.brightGreen.opacity(0.3), lineWidth: 1)
+                                    )
+                                
+                                if viewModel.isGeneratingCoreMLAI {
+                                    ProgressView()
+                                        .tint(AppConstants.Colors.brightGreen)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(AppConstants.Colors.brightGreen)
+                                }
+                            }
+                            .frame(width: 56, height: 56)
+                            .shadow(color: AppConstants.Colors.brightGreen.opacity(0.3), radius: 10, x: 0, y: 4)
                         }
-                        .frame(width: 56, height: 56)
-                        .shadow(color: AppConstants.Colors.accent.opacity(0.3), radius: 10, x: 0, y: 4)
+                        .disabled(viewModel.isGeneratingCoreMLAI || viewModel.messages.isEmpty)
+                        
+                        // Firebase AI Button (Original Blue)
+                        Button(action: {
+                            Task { @MainActor in
+                                await viewModel.generateAIResponseSuggestions()
+                            }
+                        }) {
+                            ZStack {
+                                // Glass morphism background
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(AppConstants.Colors.accent.opacity(0.3), lineWidth: 1)
+                                    )
+                                
+                                if viewModel.isGeneratingAI {
+                                    ProgressView()
+                                        .tint(AppConstants.Colors.accent)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(AppConstants.Colors.accent)
+                                }
+                            }
+                            .frame(width: 56, height: 56)
+                            .shadow(color: AppConstants.Colors.accent.opacity(0.3), radius: 10, x: 0, y: 4)
+                        }
+                        .disabled(viewModel.isGeneratingAI || viewModel.messages.isEmpty)
                     }
-                    .disabled(viewModel.isGeneratingAI || viewModel.messages.isEmpty)
                     .padding(.leading, 16)
                     .padding(.bottom, max(inputFooterHeight + 16, 76))
                     .animation(.easeInOut(duration: 0.2), value: inputFooterHeight)

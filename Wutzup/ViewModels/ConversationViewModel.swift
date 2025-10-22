@@ -23,6 +23,7 @@ class ConversationViewModel: ObservableObject {
     @Published var showingAISuggestion = false
     @Published var showingGIFGenerator = false
     @Published var isGeneratingGIF = false
+    @Published var isGeneratingCoreMLAI = false
     
     let conversation: Conversation
     private let messageService: MessageService
@@ -30,6 +31,7 @@ class ConversationViewModel: ObservableObject {
     private let authService: AuthenticationService
     private let draftManager: DraftManager
     private let aiService: AIService
+    private let coreMLAIService: AIService
     private let gifService: GIFService
     
     // Expose presenceService for use by child views
@@ -42,12 +44,13 @@ class ConversationViewModel: ObservableObject {
     private var typingTimer: Timer?
     private var readReceiptDebounceTask: Task<Void, Never>?
     
-    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), gifService: GIFService = FirebaseGIFService(), draftManager: DraftManager = .shared) {
+    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), coreMLAIService: AIService = CoreMLAIService(), gifService: GIFService = FirebaseGIFService(), draftManager: DraftManager = .shared) {
         self.conversation = conversation
         self.messageService = messageService
         self._presenceService = presenceService
         self.authService = authService
         self.aiService = aiService
+        self.coreMLAIService = coreMLAIService
         self.gifService = gifService
         self.draftManager = draftManager
     }
@@ -483,6 +486,43 @@ class ConversationViewModel: ObservableObject {
     func dismissAISuggestion() {
         showingAISuggestion = false
         aiSuggestion = nil
+    }
+    
+    // MARK: - CoreML AI Response Suggestions
+    
+    func generateCoreMLAIResponseSuggestions() async {
+        guard !messages.isEmpty else {
+            print("❌ No messages to generate suggestions from")
+            return
+        }
+        
+        isGeneratingCoreMLAI = true
+        
+        do {
+            let userPersonality = authService.currentUser?.personality
+            
+            print("🧠 Generating CoreML AI suggestions...")
+            print("   Conversation history: \(messages.count) messages")
+            print("   User personality: \(userPersonality ?? "none")")
+            
+            let suggestion = try await coreMLAIService.generateResponseSuggestions(
+                conversationHistory: messages,
+                userPersonality: userPersonality
+            )
+            
+            print("✅ CoreML AI suggestions generated!")
+            print("   Positive: \(suggestion.positiveResponse)")
+            print("   Negative: \(suggestion.negativeResponse)")
+            
+            aiSuggestion = suggestion
+            showingAISuggestion = true
+            
+        } catch {
+            print("❌ Error generating CoreML AI suggestions: \(error)")
+            errorMessage = "Failed to generate suggestions: \(error.localizedDescription)"
+        }
+        
+        isGeneratingCoreMLAI = false
     }
     
     // MARK: - GIF Generation
