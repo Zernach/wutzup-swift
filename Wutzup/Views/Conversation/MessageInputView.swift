@@ -7,15 +7,44 @@
 
 import SwiftUI
 
+// Preference key to communicate the height of the input view
+struct MessageInputHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct MessageInputView: View {
     @Binding var text: String
     let isSending: Bool
     let onSend: (String) -> Void
     let onTextChanged: () -> Void
+    let onOpenAttachmentMenu: () -> Void
     @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         HStack(spacing: 12) {
+            // Plus Button (Attachment Menu)
+            Button(action: {
+                isTextFieldFocused = false
+                onOpenAttachmentMenu()
+            }) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(AppConstants.Colors.border, lineWidth: 1)
+                        )
+                    
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(AppConstants.Colors.accent)
+                }
+                .frame(width: 36, height: 36)
+            }
+            
             // Text Input
             TextField("Message", text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
@@ -69,6 +98,18 @@ struct MessageInputView: View {
                 .foregroundColor(AppConstants.Colors.border),
             alignment: .top
         )
+        .overlay(
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear {
+                        print("📏 [MessageInputView] Initial geometry: \(geometry.size)")
+                    }
+                    .preference(
+                        key: MessageInputHeightKey.self,
+                        value: geometry.size.height
+                    )
+            }
+        )
     }
 }
 
@@ -79,7 +120,8 @@ struct MessageInputView: View {
             text: .constant(""),
             isSending: false,
             onSend: { _ in },
-            onTextChanged: {}
+            onTextChanged: {},
+            onOpenAttachmentMenu: {}
         )
     }
 }

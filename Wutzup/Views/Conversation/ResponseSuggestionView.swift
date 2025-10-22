@@ -41,7 +41,7 @@ struct ResponseSuggestionView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
                                 Image(systemName: "hand.thumbsup.fill")
-                                    .foregroundColor(.green)
+                                    .foregroundColor(AppConstants.Colors.brightGreen)
                                 Text("Positive Response")
                                     .font(.headline)
                                     .foregroundColor(AppConstants.Colors.textPrimary)
@@ -56,7 +56,7 @@ struct ResponseSuggestionView: View {
                                 .background(AppConstants.Colors.surface)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.green.opacity(0.3), lineWidth: 2)
+                                        .stroke(AppConstants.Colors.brightGreen.opacity(0.3), lineWidth: 2)
                                 )
                                 .cornerRadius(12)
                             
@@ -65,13 +65,13 @@ struct ResponseSuggestionView: View {
                             }) {
                                 HStack {
                                     Image(systemName: "checkmark.circle.fill")
-                                    Text("Use This Response")
+                                    Text("Use Positive Response")
                                 }
                                 .font(.body.bold())
-                                .foregroundColor(.white)
+                                .foregroundColor(.black)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
-                                .background(Color.green)
+                                .background(AppConstants.Colors.brightGreen)
                                 .cornerRadius(10)
                             }
                         }
@@ -105,7 +105,7 @@ struct ResponseSuggestionView: View {
                             }) {
                                 HStack {
                                     Image(systemName: "checkmark.circle.fill")
-                                    Text("Use This Response")
+                                    Text("Use Negative Response")
                                 }
                                 .font(.body.bold())
                                 .foregroundColor(.white)

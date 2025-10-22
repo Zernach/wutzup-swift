@@ -21,6 +21,8 @@ class ConversationViewModel: ObservableObject {
     @Published var isGeneratingAI = false
     @Published var aiSuggestion: AIResponseSuggestion?
     @Published var showingAISuggestion = false
+    @Published var showingGIFGenerator = false
+    @Published var isGeneratingGIF = false
     
     let conversation: Conversation
     private let messageService: MessageService
@@ -28,6 +30,7 @@ class ConversationViewModel: ObservableObject {
     private let authService: AuthenticationService
     private let draftManager: DraftManager
     private let aiService: AIService
+    private let gifService: GIFService
     
     // Expose presenceService for use by child views
     var presenceService: PresenceService {
@@ -39,12 +42,13 @@ class ConversationViewModel: ObservableObject {
     private var typingTimer: Timer?
     private var readReceiptDebounceTask: Task<Void, Never>?
     
-    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), draftManager: DraftManager = .shared) {
+    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), gifService: GIFService = FirebaseGIFService(), draftManager: DraftManager = .shared) {
         self.conversation = conversation
         self.messageService = messageService
         self._presenceService = presenceService
         self.authService = authService
         self.aiService = aiService
+        self.gifService = gifService
         self.draftManager = draftManager
     }
     
@@ -479,6 +483,48 @@ class ConversationViewModel: ObservableObject {
     func dismissAISuggestion() {
         showingAISuggestion = false
         aiSuggestion = nil
+    }
+    
+    // MARK: - GIF Generation
+    
+    func showGIFGenerator() {
+        showingGIFGenerator = true
+    }
+    
+    func generateGIF(prompt: String) async {
+        guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            print("❌ Invalid GIF prompt")
+            return
+        }
+        
+        isGeneratingGIF = true
+        showingGIFGenerator = false
+        
+        do {
+            print("🎬 Generating GIF with prompt: \(prompt)")
+            
+            // Generate GIF
+            let gifURL = try await gifService.generateGIF(prompt: prompt)
+            
+            print("✅ GIF generated successfully: \(gifURL)")
+            
+            // Send as message
+            try await messageService.sendMessage(
+                conversationId: conversation.id,
+                content: "🎬 Generated GIF: \(prompt)",
+                mediaUrl: gifURL,
+                mediaType: "image/gif",
+                messageId: nil
+            )
+            
+            print("✅ GIF message sent!")
+            
+        } catch {
+            print("❌ Error generating GIF: \(error)")
+            errorMessage = "Failed to generate GIF: \(error.localizedDescription)"
+        }
+        
+        isGeneratingGIF = false
     }
 }
 

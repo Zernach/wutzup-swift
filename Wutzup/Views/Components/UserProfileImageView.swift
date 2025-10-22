@@ -17,8 +17,6 @@ struct UserProfileImageView: View {
     @State private var isOnline: Bool = false
     @State private var presenceTask: Task<Void, Never>?
     
-    // Color for online status indicator (bright green: #72fa41)
-    private let onlineColor = Color(red: 0x72 / 255.0, green: 0xfa / 255.0, blue: 0x41 / 255.0)
     private let offlineColor = Color.red
     
     /// Creates a user profile image view
@@ -70,7 +68,7 @@ struct UserProfileImageView: View {
             // Online Status Indicator
             if showOnlineStatus {
                 Circle()
-                    .fill(isOnline ? onlineColor : offlineColor)
+                    .fill(isOnline ? AppConstants.Colors.brightGreen : offlineColor)
                     .frame(width: size * 0.28, height: size * 0.28)
                     .overlay(
                         Circle()

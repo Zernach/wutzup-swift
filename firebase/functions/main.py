@@ -9,12 +9,15 @@ This module contains Firebase Cloud Functions for handling:
 """
 
 from firebase_functions import firestore_fn, https_fn, options
-from firebase_admin import initialize_app, firestore, messaging
+from firebase_admin import initialize_app, firestore, messaging, storage
 from google.cloud.firestore_v1.base_query import FieldFilter
 from typing import Any, List, Dict
 import logging
 import os
 import json
+import io
+import tempfile
+from datetime import datetime
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
@@ -23,6 +26,13 @@ load_dotenv()
 # LangChain imports
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
+
+# OpenAI for DALL-E
+from openai import OpenAI
+
+# PIL for image processing
+from PIL import Image
+import requests
 
 # Initialize Firebase Admin SDK
 app = initialize_app()
@@ -495,6 +505,195 @@ Generate two response options (positive and negative) that the user could send n
             json.dumps({"error": str(e)}),
             status=500,
             headers={"Content-Type": "application/json"}
+        )
+
+
+# ============================================================================
+# GIF Generation (DALL-E)
+# ============================================================================
+
+@https_fn.on_request(cors=options.CorsOptions(
+    cors_origins="*",
+    cors_methods=["POST", "OPTIONS"]
+))
+def generate_gif(req: https_fn.Request) -> https_fn.Response:
+    """
+    Generate a GIF from a single DALL-E image.
+    
+    This function:
+    1. Generates 1 image using DALL-E 3
+    2. Converts to GIF format
+    3. Uploads to Firebase Storage
+    4. Returns the public URL
+    
+    Request Body:
+    {
+        "prompt": "a cat dancing under disco lights"
+    }
+    
+    Response:
+    {
+        "gif_url": "https://storage.googleapis.com/.../animated.gif",
+        "frames_generated": 20
+    }
+    """
+    try:
+        # Handle CORS preflight
+        if req.method == "OPTIONS":
+            return https_fn.Response(
+                status=204,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                    "Access-Control-Max-Age": "3600"
+                }
+            )
+        
+        # Parse request
+        data = req.get_json()
+        
+        if not data or "prompt" not in data:
+            return https_fn.Response(
+                json.dumps({"error": "Missing 'prompt' in request body"}),
+                status=400,
+                headers={
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        
+        prompt = data.get("prompt")
+        
+        if not prompt or len(prompt.strip()) == 0:
+            return https_fn.Response(
+                json.dumps({"error": "Prompt cannot be empty"}),
+                status=400,
+                headers={
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        
+        logger.info(f"🎬 Generating GIF with prompt: {prompt}")
+        
+        # Get OpenAI API key
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
+        
+        if not openai_api_key:
+            logger.error("OPENAI_API_KEY not set in environment")
+            return https_fn.Response(
+                json.dumps({"error": "OpenAI API key not configured"}),
+                status=500,
+                headers={
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        
+        # Initialize OpenAI client
+        client = OpenAI(api_key=openai_api_key)
+        
+        # Generate 1 frame with DALL-E (convert single image to GIF)
+        frames = []
+        
+        logger.info(f"🎨 Generating image...")
+        
+        try:
+            # Generate image with DALL-E 3
+            response = client.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                size="1024x1024",
+                quality="standard",
+                n=1
+            )
+            
+            # Get image URL
+            image_url = response.data[0].url
+            
+            # Download image
+            img_response = requests.get(image_url)
+            img_response.raise_for_status()
+            
+            # Load image
+            img = Image.open(io.BytesIO(img_response.content))
+            
+            # Resize to optimize GIF size (512x512)
+            img = img.resize((512, 512), Image.Resampling.LANCZOS)
+            
+            frames.append(img)
+            
+            logger.info(f"  ✅ Image generated")
+            
+        except Exception as e:
+            logger.error(f"  ❌ Error generating image: {e}")
+            raise Exception(f"Failed to generate image: {e}")
+        
+        logger.info(f"✅ Generated image successfully")
+        
+        # Convert to GIF
+        logger.info("🎞️ Converting to GIF format...")
+        
+        with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as temp_file:
+            gif_path = temp_file.name
+            
+            # Save as GIF (single frame)
+            frames[0].save(
+                gif_path,
+                format='GIF',
+                optimize=False
+            )
+        
+        logger.info(f"✅ GIF created: {gif_path}")
+        
+        # Upload to Firebase Storage
+        logger.info("☁️ Uploading to Firebase Storage...")
+        
+        bucket = storage.bucket()
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        blob_name = f"gifs/generated_{timestamp}.gif"
+        blob = bucket.blob(blob_name)
+        
+        # Upload file
+        blob.upload_from_filename(gif_path, content_type="image/gif")
+        
+        # Make publicly accessible
+        blob.make_public()
+        
+        # Get public URL
+        gif_url = blob.public_url
+        
+        logger.info(f"✅ GIF uploaded: {gif_url}")
+        
+        # Clean up temp file
+        try:
+            os.unlink(gif_path)
+        except:
+            pass
+        
+        # Return response
+        return https_fn.Response(
+            json.dumps({
+                "gif_url": gif_url,
+                "frames_generated": 1
+            }),
+            status=200,
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error in generate_gif: {e}", exc_info=True)
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
         )
 
 

@@ -13,6 +13,7 @@ struct ConversationView: View {
     @StateObject private var viewModel: ConversationViewModel
     @State private var scrollProxy: ScrollViewProxy?
     @State private var showingGroupMembers = false
+    @State private var inputFooterHeight: CGFloat = 60 // Default height estimate
     @Environment(\.scenePhase) private var scenePhase
     
     let userService: UserService
@@ -86,8 +87,17 @@ struct ConversationView: View {
                     },
                     onTextChanged: {
                         viewModel.onTypingChanged()
+                    },
+                    onOpenAttachmentMenu: {
+                        viewModel.showGIFGenerator()
                     }
                 )
+            }
+            .onPreferenceChange(MessageInputHeightKey.self) { height in
+                print("📏 [ConversationView] Input footer height changed: \(height)")
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    inputFooterHeight = height
+                }
             }
             
             // Floating AI Suggestions Button
@@ -122,7 +132,8 @@ struct ConversationView: View {
                     }
                     .disabled(viewModel.isGeneratingAI || viewModel.messages.isEmpty)
                     .padding(.leading, 16)
-                    .padding(.bottom, 80)
+                    .padding(.bottom, max(inputFooterHeight + 16, 76))
+                    .animation(.easeInOut(duration: 0.2), value: inputFooterHeight)
                     
                     Spacer()
                 }
@@ -159,6 +170,40 @@ struct ConversationView: View {
                 )
             }
         }
+        .sheet(isPresented: $viewModel.showingGIFGenerator) {
+            GIFGeneratorView { prompt in
+                await viewModel.generateGIF(prompt: prompt)
+            }
+        }
+        .overlay(
+            Group {
+                if viewModel.isGeneratingGIF {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                        
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .tint(AppConstants.Colors.accent)
+                            
+                            Text("Generating GIF...")
+                                .font(.headline)
+                                .foregroundColor(AppConstants.Colors.textPrimary)
+                            
+                            Text("This may take 5-10 seconds")
+                                .font(.subheadline)
+                                .foregroundColor(AppConstants.Colors.textSecondary)
+                        }
+                        .padding(32)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(.ultraThinMaterial)
+                        )
+                    }
+                }
+            }
+        )
         .onAppear {
             // Load any saved draft for this conversation
             viewModel.loadDraft()

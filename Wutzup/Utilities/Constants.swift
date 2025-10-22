@@ -27,6 +27,7 @@ enum AppConstants {
         static let destructive = Color.red.opacity(0.85)
         static let error = Color(red: 1.0, green: 0.3, blue: 0.3) // Bright red for errors/drafts
         static let mutedIcon = Color.white.opacity(0.65)
+        static let brightGreen = Color(red: 0x72 / 255.0, green: 0xfa / 255.0, blue: 0x41 / 255.0) // #72fa41
     }
     
     // Sizes
