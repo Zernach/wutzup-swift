@@ -13,6 +13,7 @@ struct ConversationView: View {
     @StateObject private var viewModel: ConversationViewModel
     @State private var scrollProxy: ScrollViewProxy?
     @State private var showingGroupMembers = false
+    @State private var showingAIMenu = false
     @State private var inputFooterHeight: CGFloat = 60 // Default height estimate
     @Environment(\.scenePhase) private var scenePhase
     
@@ -87,9 +88,6 @@ struct ConversationView: View {
                     },
                     onTextChanged: {
                         viewModel.onTypingChanged()
-                    },
-                    onOpenAttachmentMenu: {
-                        viewModel.showGIFGenerator()
                     }
                 )
             }
@@ -100,69 +98,31 @@ struct ConversationView: View {
                 }
             }
             
-            // Floating AI Suggestions Buttons
+            // Floating AI Menu
             VStack {
                 Spacer()
                 HStack {
-                    VStack(spacing: 12) {
-                        // CoreML AI Button (Bright Green)
-                        Button(action: {
+                    AIMenuView(
+                        isExpanded: $showingAIMenu,
+                        isGeneratingCoreML: viewModel.isGeneratingCoreMLAI,
+                        isGeneratingAI: viewModel.isGeneratingAI,
+                        onConciseReplies: {
                             Task { @MainActor in
                                 await viewModel.generateCoreMLAIResponseSuggestions()
                             }
-                        }) {
-                            ZStack {
-                                // Glass morphism background
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(.ultraThinMaterial)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(AppConstants.Colors.brightGreen.opacity(0.3), lineWidth: 1)
-                                    )
-                                
-                                if viewModel.isGeneratingCoreMLAI {
-                                    ProgressView()
-                                        .tint(AppConstants.Colors.brightGreen)
-                                } else {
-                                    Image(systemName: "sparkles")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(AppConstants.Colors.brightGreen)
-                                }
-                            }
-                            .frame(width: 56, height: 56)
-                            .shadow(color: AppConstants.Colors.brightGreen.opacity(0.3), radius: 10, x: 0, y: 4)
-                        }
-                        .disabled(viewModel.isGeneratingCoreMLAI || viewModel.messages.isEmpty)
-                        
-                        // Firebase AI Button (Original Blue)
-                        Button(action: {
+                        },
+                        onThoughtfulReplies: {
                             Task { @MainActor in
                                 await viewModel.generateAIResponseSuggestions()
                             }
-                        }) {
-                            ZStack {
-                                // Glass morphism background
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(.ultraThinMaterial)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(AppConstants.Colors.accent.opacity(0.3), lineWidth: 1)
-                                    )
-                                
-                                if viewModel.isGeneratingAI {
-                                    ProgressView()
-                                        .tint(AppConstants.Colors.accent)
-                                } else {
-                                    Image(systemName: "sparkles")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(AppConstants.Colors.accent)
-                                }
-                            }
-                            .frame(width: 56, height: 56)
-                            .shadow(color: AppConstants.Colors.accent.opacity(0.3), radius: 10, x: 0, y: 4)
+                        },
+                        onConductResearch: {
+                            viewModel.showResearch()
+                        },
+                        onGenerateGIF: {
+                            viewModel.showGIFGenerator()
                         }
-                        .disabled(viewModel.isGeneratingAI || viewModel.messages.isEmpty)
-                    }
+                    )
                     .padding(.leading, 16)
                     .padding(.bottom, max(inputFooterHeight + 16, 76))
                     .animation(.easeInOut(duration: 0.2), value: inputFooterHeight)
@@ -207,6 +167,11 @@ struct ConversationView: View {
                 await viewModel.generateGIF(prompt: prompt)
             }
         }
+        .sheet(isPresented: $viewModel.showingResearch) {
+            ResearchView { prompt in
+                await viewModel.conductResearch(prompt: prompt)
+            }
+        }
         .overlay(
             Group {
                 if viewModel.isGeneratingGIF {
@@ -224,6 +189,30 @@ struct ConversationView: View {
                                 .foregroundColor(AppConstants.Colors.textPrimary)
                             
                             Text("This may take 5-10 seconds")
+                                .font(.subheadline)
+                                .foregroundColor(AppConstants.Colors.textSecondary)
+                        }
+                        .padding(32)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(.ultraThinMaterial)
+                        )
+                    }
+                } else if viewModel.isConductingResearch {
+                    ZStack {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                        
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .tint(AppConstants.Colors.accent)
+                            
+                            Text("Conducting Research...")
+                                .font(.headline)
+                                .foregroundColor(AppConstants.Colors.textPrimary)
+                            
+                            Text("Searching the web and analyzing results")
                                 .font(.subheadline)
                                 .foregroundColor(AppConstants.Colors.textSecondary)
                         }

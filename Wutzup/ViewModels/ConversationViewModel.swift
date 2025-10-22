@@ -24,6 +24,8 @@ class ConversationViewModel: ObservableObject {
     @Published var showingGIFGenerator = false
     @Published var isGeneratingGIF = false
     @Published var isGeneratingCoreMLAI = false
+    @Published var showingResearch = false
+    @Published var isConductingResearch = false
     
     let conversation: Conversation
     private let messageService: MessageService
@@ -33,6 +35,7 @@ class ConversationViewModel: ObservableObject {
     private let aiService: AIService
     private let coreMLAIService: AIService
     private let gifService: GIFService
+    private let researchService: ResearchService
     
     // Expose presenceService for use by child views
     var presenceService: PresenceService {
@@ -44,7 +47,7 @@ class ConversationViewModel: ObservableObject {
     private var typingTimer: Timer?
     private var readReceiptDebounceTask: Task<Void, Never>?
     
-    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), coreMLAIService: AIService = CoreMLAIService(), gifService: GIFService = FirebaseGIFService(), draftManager: DraftManager = .shared) {
+    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), coreMLAIService: AIService = CoreMLAIService(), gifService: GIFService = FirebaseGIFService(), researchService: ResearchService = FirebaseResearchService(), draftManager: DraftManager = .shared) {
         self.conversation = conversation
         self.messageService = messageService
         self._presenceService = presenceService
@@ -52,6 +55,7 @@ class ConversationViewModel: ObservableObject {
         self.aiService = aiService
         self.coreMLAIService = coreMLAIService
         self.gifService = gifService
+        self.researchService = researchService
         self.draftManager = draftManager
     }
     
@@ -566,5 +570,55 @@ class ConversationViewModel: ObservableObject {
         
         isGeneratingGIF = false
     }
+    
+    // MARK: - Research
+    
+    func showResearch() {
+        showingResearch = true
+    }
+    
+    func conductResearch(prompt: String) async {
+        guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            print("❌ Invalid research prompt")
+            return
+        }
+        
+        isConductingResearch = true
+        showingResearch = false
+        
+        do {
+            print("🔍 Conducting research: \(prompt)")
+            
+            // Conduct research
+            let summary = try await researchService.conductResearch(prompt: prompt)
+            
+            print("✅ Research complete!")
+            print("   Summary: \(summary.prefix(100))...")
+            
+            // Send as message
+            let researchMessage = """
+            🔍 Research Results: \(prompt)
+            
+            \(summary)
+            """
+            
+            try await messageService.sendMessage(
+                conversationId: conversation.id,
+                content: researchMessage,
+                mediaUrl: nil,
+                mediaType: nil,
+                messageId: nil
+            )
+            
+            print("✅ Research message sent!")
+            
+        } catch {
+            print("❌ Error conducting research: \(error)")
+            errorMessage = "Failed to conduct research: \(error.localizedDescription)"
+        }
+        
+        isConductingResearch = false
+    }
 }
+
 

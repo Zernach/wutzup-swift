@@ -27,12 +27,15 @@ load_dotenv()
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
-# OpenAI for DALL-E
+# OpenAI for DALL-E and research
 from openai import OpenAI
 
 # PIL for image processing
 from PIL import Image
 import requests
+
+# Beautiful Soup for web scraping
+from bs4 import BeautifulSoup
 
 # Initialize Firebase Admin SDK
 app = initialize_app()
@@ -695,6 +698,316 @@ def generate_gif(req: https_fn.Request) -> https_fn.Response:
                 "Access-Control-Allow-Origin": "*"
             }
         )
+
+
+# ============================================================================
+# Web Research (Search + AI Summarization)
+# ============================================================================
+
+@https_fn.on_request(cors=options.CorsOptions(
+    cors_origins="*",
+    cors_methods=["POST", "OPTIONS"]
+))
+def conduct_research(req: https_fn.Request) -> https_fn.Response:
+    """
+    Conduct web research on a given prompt.
+    
+    This function:
+    1. Searches DuckDuckGo for relevant information
+    2. Scrapes content from top results
+    3. Uses OpenAI GPT to summarize the findings
+    4. Returns a comprehensive summary
+    
+    Request Body:
+    {
+        "prompt": "What are the latest developments in renewable energy?"
+    }
+    
+    Response:
+    {
+        "summary": "Based on recent research..."
+    }
+    """
+    try:
+        # Handle CORS preflight
+        if req.method == "OPTIONS":
+            return https_fn.Response(
+                status=204,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                    "Access-Control-Max-Age": "3600"
+                }
+            )
+        
+        # Parse request
+        data = req.get_json()
+        
+        if not data or "prompt" not in data:
+            return https_fn.Response(
+                json.dumps({"error": "Missing 'prompt' in request body"}),
+                status=400,
+                headers={
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        
+        prompt = data.get("prompt")
+        
+        if not prompt or len(prompt.strip()) == 0:
+            return https_fn.Response(
+                json.dumps({"error": "Prompt cannot be empty"}),
+                status=400,
+                headers={
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        
+        logger.info(f"🔍 Conducting research: {prompt}")
+        
+        # Get OpenAI API key
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
+        
+        if not openai_api_key:
+            logger.error("OPENAI_API_KEY not set in environment")
+            return https_fn.Response(
+                json.dumps({"error": "OpenAI API key not configured"}),
+                status=500,
+                headers={
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        
+        # Step 1: Search DuckDuckGo for results
+        logger.info("🌐 Searching DuckDuckGo...")
+        search_results = _search_duckduckgo(prompt)
+        
+        if not search_results:
+            logger.warning("No search results found")
+            return https_fn.Response(
+                json.dumps({
+                    "summary": "I couldn't find any relevant information for your query. Please try rephrasing your question or search for something else."
+                }),
+                status=200,
+                headers={
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        
+        logger.info(f"✅ Found {len(search_results)} search results")
+        
+        # Step 2: Scrape content from top results (limit to 3)
+        logger.info("📄 Scraping content from top results...")
+        scraped_content = []
+        for i, result in enumerate(search_results[:3]):
+            try:
+                content = _scrape_webpage(result['url'])
+                if content:
+                    scraped_content.append({
+                        'title': result['title'],
+                        'url': result['url'],
+                        'content': content[:1000]  # Limit to 1000 chars per page
+                    })
+                    logger.info(f"  ✅ Scraped: {result['title']}")
+            except Exception as e:
+                logger.warning(f"  ❌ Failed to scrape {result['url']}: {e}")
+                continue
+        
+        if not scraped_content:
+            logger.warning("No content could be scraped")
+            return https_fn.Response(
+                json.dumps({
+                    "summary": "I found some results but couldn't access their content. This might be due to website restrictions. Please try a different query."
+                }),
+                status=200,
+                headers={
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        
+        logger.info(f"✅ Scraped {len(scraped_content)} pages")
+        
+        # Step 3: Use OpenAI to summarize the findings
+        logger.info("🤖 Generating AI summary...")
+        
+        # Prepare context for AI
+        context = "\n\n".join([
+            f"Source: {item['title']}\nURL: {item['url']}\nContent: {item['content']}"
+            for item in scraped_content
+        ])
+        
+        # Create LangChain prompt
+        system_prompt = """You are a helpful research assistant. Your task is to summarize web search results in a clear, comprehensive, and accurate manner.
+
+Guidelines:
+- Synthesize information from multiple sources
+- Provide factual, objective information
+- Include specific details and examples when available
+- Organize information logically
+- Keep the summary concise but informative (200-400 words)
+- Cite sources when mentioning specific claims
+- If information is conflicting, mention both perspectives
+"""
+        
+        user_prompt = f"""Research question: {prompt}
+
+Here are the search results I found:
+
+{context}
+
+Please provide a comprehensive summary that answers the research question based on these sources."""
+        
+        # Initialize ChatOpenAI
+        llm = ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=0.7,
+            openai_api_key=openai_api_key
+        )
+        
+        # Generate summary
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+        
+        response = llm.invoke(messages)
+        summary = response.content
+        
+        logger.info(f"✅ Research complete!")
+        logger.info(f"   Summary length: {len(summary)} characters")
+        
+        # Return response
+        return https_fn.Response(
+            json.dumps({
+                "summary": summary,
+                "sources": [{"title": item['title'], "url": item['url']} for item in scraped_content]
+            }),
+            status=200,
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Error in conduct_research: {e}", exc_info=True)
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+
+
+def _search_duckduckgo(query: str, max_results: int = 5) -> List[Dict[str, str]]:
+    """
+    Search DuckDuckGo and return results.
+    
+    Returns:
+        List of dicts with 'title', 'url', 'snippet'
+    """
+    try:
+        # Use DuckDuckGo HTML search (no API key needed)
+        search_url = "https://html.duckduckgo.com/html/"
+        params = {
+            'q': query,
+            'kl': 'us-en'  # Region
+        }
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.post(search_url, data=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        # Parse HTML
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        results = []
+        for result_div in soup.find_all('div', class_='result', limit=max_results):
+            try:
+                # Extract title and URL
+                title_tag = result_div.find('a', class_='result__a')
+                if not title_tag:
+                    continue
+                
+                title = title_tag.get_text(strip=True)
+                url = title_tag.get('href', '')
+                
+                # Clean URL (DuckDuckGo wraps URLs)
+                if url.startswith('//duckduckgo.com/l/?uddg='):
+                    # Extract actual URL from redirect
+                    import urllib.parse
+                    url = urllib.parse.unquote(url.split('uddg=')[1].split('&')[0])
+                
+                # Extract snippet
+                snippet_tag = result_div.find('a', class_='result__snippet')
+                snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
+                
+                if url and not url.startswith('http'):
+                    url = 'https:' + url
+                
+                results.append({
+                    'title': title,
+                    'url': url,
+                    'snippet': snippet
+                })
+                
+            except Exception as e:
+                logger.warning(f"Error parsing search result: {e}")
+                continue
+        
+        return results
+        
+    except Exception as e:
+        logger.error(f"Error searching DuckDuckGo: {e}")
+        return []
+
+
+def _scrape_webpage(url: str, timeout: int = 10) -> str:
+    """
+    Scrape text content from a webpage.
+    
+    Returns:
+        Text content of the page
+    """
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        
+        # Parse HTML
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(['script', 'style', 'nav', 'footer', 'header']):
+            script.decompose()
+        
+        # Get text
+        text = soup.get_text(separator=' ', strip=True)
+        
+        # Clean up whitespace
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = ' '.join(chunk for chunk in chunks if chunk)
+        
+        return text
+        
+    except Exception as e:
+        logger.error(f"Error scraping {url}: {e}")
+        return ""
 
 
 # ============================================================================
