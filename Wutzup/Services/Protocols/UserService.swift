@@ -10,4 +10,5 @@ import Foundation
 protocol UserService: AnyObject {
     func fetchAllUsers() async throws -> [User]
     func fetchUser(userId: String) async throws -> User
+    func updatePersonality(userId: String, personality: String?) async throws
 }

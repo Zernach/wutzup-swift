@@ -5,7 +5,16 @@
 **Date**: October 21, 2025  
 **Phase**: Phase 1 (iOS Setup) 100% Complete → Ready for Xcode Project Creation
 
-**Latest Update**: ✅ **Race Conditions Fixed** (October 21, 2025)
+**Latest Update**: ✅ **Navigation Update Bug Fixed** (October 21, 2025)
+
+**NavigationRequestObserver Multiple Updates Fix:**
+- Fixed "tried to update multiple times per frame" error
+- Added `Task.yield()` in AppState auth state observation
+- Wrapped navigation path changes in async Task with yield
+- Prevents multiple state updates in same rendering frame
+- See `@docs/NAVIGATION_UPDATE_FIX.md` for complete details
+
+**Previously Fixed**: ✅ **Race Conditions Fixed** (October 21, 2025)
 
 **Chat Loading Race Condition:**
 - Fixed race condition where chats sometimes didn't load on login

@@ -20,6 +20,9 @@ struct AccountView: View {
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var isRequestingPermission = false
     @State private var showingTokenCopied = false
+    @State private var personalityText: String = ""
+    @State private var isSavingPersonality = false
+    @State private var showingPersonalitySaved = false
     
     var presenceService: PresenceService? = nil
     
@@ -52,6 +55,82 @@ struct AccountView: View {
                     }
                     .padding(.top, 40)
                     .padding(.bottom, 40)
+                    
+                    Divider()
+                        .background(AppConstants.Colors.border)
+                    
+                    // Personality Section
+                    VStack(spacing: 0) {
+                        // Section Header
+                        HStack {
+                            Text("Personality")
+                                .font(.headline)
+                                .foregroundColor(AppConstants.Colors.textPrimary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 12)
+                        
+                        VStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Describe your personality")
+                                    .font(.body)
+                                    .foregroundColor(AppConstants.Colors.textPrimary)
+                                
+                                Text("This helps the AI generate responses that match your communication style")
+                                    .font(.caption)
+                                    .foregroundColor(AppConstants.Colors.textSecondary)
+                                
+                                TextEditor(text: $personalityText)
+                                    .frame(height: 120)
+                                    .padding(8)
+                                    .background(AppConstants.Colors.surfaceSecondary)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(AppConstants.Colors.border, lineWidth: 1)
+                                    )
+                                    .cornerRadius(8)
+                                    .foregroundColor(AppConstants.Colors.textPrimary)
+                                
+                                HStack {
+                                    Spacer()
+                                    
+                                    if showingPersonalitySaved {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(.green)
+                                            Text("Saved")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                        }
+                                    }
+                                    
+                                    Button(action: {
+                                        savePersonality()
+                                    }) {
+                                        if isSavingPersonality {
+                                            ProgressView()
+                                                .tint(AppConstants.Colors.textPrimary)
+                                        } else {
+                                            Text("Save")
+                                                .font(.body.bold())
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 20)
+                                                .padding(.vertical, 8)
+                                                .background(AppConstants.Colors.accent)
+                                                .cornerRadius(8)
+                                        }
+                                    }
+                                    .disabled(isSavingPersonality)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(AppConstants.Colors.surface)
+                        }
+                        .padding(.bottom, 20)
+                    }
                     
                     Divider()
                         .background(AppConstants.Colors.border)
@@ -243,6 +322,7 @@ struct AccountView: View {
         .task {
             await loadFCMToken()
             await checkNotificationStatus()
+            loadPersonality()
         }
         .confirmationDialog(
             "Delete Account",
@@ -397,6 +477,45 @@ struct AccountView: View {
                 isDeleting = false
                 deleteErrorMessage = error.localizedDescription
                 showingDeleteError = true
+            }
+        }
+    }
+    
+    private func loadPersonality() {
+        personalityText = appState.currentUser?.personality ?? ""
+    }
+    
+    private func savePersonality() {
+        guard let userId = appState.currentUser?.id else { return }
+        
+        isSavingPersonality = true
+        
+        Task { @MainActor in
+            do {
+                let trimmedPersonality = personalityText.trimmingCharacters(in: .whitespacesAndNewlines)
+                let personalityToSave = trimmedPersonality.isEmpty ? nil : trimmedPersonality
+                
+                try await appState.userService.updatePersonality(
+                    userId: userId,
+                    personality: personalityToSave
+                )
+                
+                // Update current user in app state
+                if var updatedUser = appState.currentUser {
+                    updatedUser.personality = personalityToSave
+                    appState.currentUser = updatedUser
+                }
+                
+                isSavingPersonality = false
+                showingPersonalitySaved = true
+                
+                // Hide the "Saved" message after 2 seconds
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                showingPersonalitySaved = false
+                
+            } catch {
+                print("❌ Error saving personality: \(error)")
+                isSavingPersonality = false
             }
         }
     }

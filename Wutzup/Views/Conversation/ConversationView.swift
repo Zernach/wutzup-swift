@@ -23,9 +23,10 @@ struct ConversationView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Messages List
-            ScrollViewReader { proxy in
+        ZStack {
+            VStack(spacing: 0) {
+                // Messages List
+                ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(viewModel.messages) { message in
@@ -70,42 +71,93 @@ struct ConversationView: View {
                 }
             }
             
-            // Message Input
-            MessageInputView(
-                text: $viewModel.messageText,
-                isSending: viewModel.isSending,
-                onSend: { content in
-                    print("🔵 [ConversationView] Send button tapped")
-                    Task { @MainActor in
-                        print("🔵 [ConversationView] About to call sendMessage()")
-                        await viewModel.sendMessage(content: content)
-                        print("🔵 [ConversationView] sendMessage() completed")
-                        scrollToBottom()
+                // Message Input
+                MessageInputView(
+                    text: $viewModel.messageText,
+                    isSending: viewModel.isSending,
+                    onSend: { content in
+                        print("🔵 [ConversationView] Send button tapped")
+                        Task { @MainActor in
+                            print("🔵 [ConversationView] About to call sendMessage()")
+                            await viewModel.sendMessage(content: content)
+                            print("🔵 [ConversationView] sendMessage() completed")
+                            scrollToBottom()
+                        }
+                    },
+                    onTextChanged: {
+                        viewModel.onTypingChanged()
                     }
-                },
-                onTextChanged: {
-                    viewModel.onTypingChanged()
+                )
+            }
+            
+            // Floating AI Suggestions Button
+            VStack {
+                Spacer()
+                HStack {
+                    Button(action: {
+                        Task { @MainActor in
+                            await viewModel.generateAIResponseSuggestions()
+                        }
+                    }) {
+                        ZStack {
+                            // Glass morphism background
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(AppConstants.Colors.accent.opacity(0.3), lineWidth: 1)
+                                )
+                            
+                            if viewModel.isGeneratingAI {
+                                ProgressView()
+                                    .tint(AppConstants.Colors.accent)
+                            } else {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(AppConstants.Colors.accent)
+                            }
+                        }
+                        .frame(width: 56, height: 56)
+                        .shadow(color: AppConstants.Colors.accent.opacity(0.3), radius: 10, x: 0, y: 4)
+                    }
+                    .disabled(viewModel.isGeneratingAI || viewModel.messages.isEmpty)
+                    .padding(.leading, 16)
+                    .padding(.bottom, 80)
+                    
+                    Spacer()
                 }
-            )
+            }
         }
         .navigationTitle(viewModel.conversation.displayName(currentUserId: appState.currentUser?.id ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if viewModel.conversation.isGroup || viewModel.conversation.participantIds.count > 2 {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showingGroupMembers = true
-                    } label: {
-                        Image(systemName: "info.circle")
-                    }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showingGroupMembers = true
+                } label: {
+                    Image(systemName: "info.circle")
                 }
             }
         }
         .sheet(isPresented: $showingGroupMembers) {
             GroupMembersView(
                 conversation: viewModel.conversation,
-                userService: userService
+                userService: userService,
+                presenceService: viewModel.presenceService
             )
+        }
+        .sheet(isPresented: $viewModel.showingAISuggestion) {
+            if let suggestion = viewModel.aiSuggestion {
+                ResponseSuggestionView(
+                    suggestion: suggestion,
+                    onSelect: { response in
+                        viewModel.selectAISuggestion(response)
+                    },
+                    onDismiss: {
+                        viewModel.dismissAISuggestion()
+                    }
+                )
+            }
         }
         .onAppear {
             // Load any saved draft for this conversation
@@ -282,4 +334,6 @@ private final class PreviewUserServiceForConversation: UserService {
         }
         return user
     }
+    
+    func updatePersonality(userId: String, personality: String?) async throws { }
 }

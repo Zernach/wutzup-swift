@@ -152,7 +152,9 @@ struct ChatListView: View {
     private var conversationListView: some View {
         List {
             ForEach(viewModel.conversations, id: \.id) { conversation in
-                NavigationLink(value: conversation) {
+                Button(action: {
+                    navigationPath.append(conversation)
+                }) {
                     ConversationRowView(
                         conversation: conversation,
                         currentUserId: appState.currentUser?.id ?? "",
@@ -161,8 +163,10 @@ struct ChatListView: View {
                         typingIndicatorText: viewModel.getTypingIndicatorText(for: conversation)
                     )
                 }
-                .listRowBackground(AppConstants.Colors.surface)
-                .listRowSeparatorTint(AppConstants.Colors.border)
+                .buttonStyle(ConversationRowButtonStyle())
+                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
         .scrollContentBackground(.hidden)
@@ -199,13 +203,32 @@ struct ChatListView: View {
 
     @MainActor
     private func navigateToConversation(_ conversation: Conversation) {
+        // Update view model first
         viewModel.upsertConversation(conversation)
 
-        if !navigationPath.isEmpty {
-            navigationPath.removeLast()
-        }
+        // Batch navigation state changes to avoid multiple updates per frame
+        Task { @MainActor in
+            // Yield to next run loop to ensure view updates complete
+            await Task.yield()
+            
+            if !navigationPath.isEmpty {
+                navigationPath.removeLast()
+            }
 
-        navigationPath.append(conversation)
+            navigationPath.append(conversation)
+        }
+    }
+}
+
+// MARK: - Button Style
+
+struct ConversationRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 

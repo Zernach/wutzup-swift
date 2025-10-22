@@ -18,23 +18,33 @@ class ConversationViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var typingUsers: [String: Bool] = [:]
     @Published var visibleMessageIds: Set<String> = []
+    @Published var isGeneratingAI = false
+    @Published var aiSuggestion: AIResponseSuggestion?
+    @Published var showingAISuggestion = false
     
     let conversation: Conversation
     private let messageService: MessageService
-    private let presenceService: PresenceService
+    private let _presenceService: PresenceService
     private let authService: AuthenticationService
     private let draftManager: DraftManager
+    private let aiService: AIService
+    
+    // Expose presenceService for use by child views
+    var presenceService: PresenceService {
+        _presenceService
+    }
     
     private var messageObservationTask: Task<Void, Never>?
     private var typingObservationTask: Task<Void, Never>?
     private var typingTimer: Timer?
     private var readReceiptDebounceTask: Task<Void, Never>?
     
-    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, draftManager: DraftManager = .shared) {
+    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), draftManager: DraftManager = .shared) {
         self.conversation = conversation
         self.messageService = messageService
-        self.presenceService = presenceService
+        self._presenceService = presenceService
         self.authService = authService
+        self.aiService = aiService
         self.draftManager = draftManager
     }
     
@@ -195,7 +205,7 @@ class ConversationViewModel: ObservableObject {
         // Observe typing indicators
         typingObservationTask?.cancel()
         typingObservationTask = Task {
-            for await typing in presenceService.observeTyping(conversationId: conversation.id) {
+            for await typing in _presenceService.observeTyping(conversationId: conversation.id) {
                 typingUsers = typing
             }
         }
@@ -213,7 +223,7 @@ class ConversationViewModel: ObservableObject {
         // Stop typing indicator on leave
         if let userId = authService.currentUser?.id {
             Task {
-                try? await presenceService.setTyping(
+                try? await _presenceService.setTyping(
                     userId: userId,
                     conversationId: conversation.id,
                     isTyping: false
@@ -281,7 +291,7 @@ class ConversationViewModel: ObservableObject {
         
         // Stop typing indicator
         print("🟢 [ConversationViewModel] Stopping typing indicator for user: \(currentUser.id)")
-        try? await presenceService.setTyping(
+        try? await _presenceService.setTyping(
             userId: currentUser.id,
             conversationId: conversation.id,
             isTyping: false
@@ -343,7 +353,7 @@ class ConversationViewModel: ObservableObject {
         
         // Set typing indicator
         Task {
-            try? await presenceService.setTyping(
+            try? await _presenceService.setTyping(
                 userId: userId,
                 conversationId: conversation.id,
                 isTyping: !messageText.isEmpty
@@ -355,7 +365,7 @@ class ConversationViewModel: ObservableObject {
             typingTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
                 guard let self = self else { return }
                 Task { @MainActor in
-                    try? await self.presenceService.setTyping(
+                    try? await self._presenceService.setTyping(
                         userId: userId,
                         conversationId: self.conversation.id,
                         isTyping: false
@@ -421,6 +431,54 @@ class ConversationViewModel: ObservableObject {
             
             errorMessage = error.localizedDescription
         }
+    }
+    
+    // MARK: - AI Response Suggestions
+    
+    func generateAIResponseSuggestions() async {
+        guard !messages.isEmpty else {
+            print("❌ No messages to generate suggestions from")
+            return
+        }
+        
+        isGeneratingAI = true
+        
+        do {
+            let userPersonality = authService.currentUser?.personality
+            
+            print("🤖 Generating AI suggestions...")
+            print("   Conversation history: \(messages.count) messages")
+            print("   User personality: \(userPersonality ?? "none")")
+            
+            let suggestion = try await aiService.generateResponseSuggestions(
+                conversationHistory: messages,
+                userPersonality: userPersonality
+            )
+            
+            print("✅ AI suggestions generated!")
+            print("   Positive: \(suggestion.positiveResponse)")
+            print("   Negative: \(suggestion.negativeResponse)")
+            
+            aiSuggestion = suggestion
+            showingAISuggestion = true
+            
+        } catch {
+            print("❌ Error generating AI suggestions: \(error)")
+            errorMessage = "Failed to generate suggestions: \(error.localizedDescription)"
+        }
+        
+        isGeneratingAI = false
+    }
+    
+    func selectAISuggestion(_ response: String) {
+        messageText = response
+        showingAISuggestion = false
+        aiSuggestion = nil
+    }
+    
+    func dismissAISuggestion() {
+        showingAISuggestion = false
+        aiSuggestion = nil
     }
 }
 

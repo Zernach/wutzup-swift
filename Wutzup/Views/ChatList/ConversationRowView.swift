@@ -98,7 +98,44 @@ struct ConversationRowView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(glassBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.2),
+                            Color.white.opacity(0.05)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.5
+                )
+        )
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 2)
+    }
+    
+    // Glass morphism background
+    private var glassBackground: some View {
+        ZStack {
+            // Base semi-transparent layer
+            Color.white.opacity(0.08)
+            
+            // Gradient overlay for depth
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.12),
+                    Color.white.opacity(0.05)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .background(.ultraThinMaterial)
     }
     
     // Create a placeholder user from conversation data if no user object is provided
@@ -129,7 +166,7 @@ struct ConversationRowView: View {
 }
 
 #Preview("Direct Chat - Online") {
-    List {
+    VStack(spacing: 12) {
         ConversationRowView(
             conversation: Conversation(
                 participantIds: ["1", "2"],
@@ -146,12 +183,14 @@ struct ConversationRowView: View {
             presenceService: PreviewPresenceService(isOnline: true),
             typingIndicatorText: nil
         )
+        .padding(.horizontal, 16)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(AppConstants.Colors.background)
 }
 
 #Preview("Direct Chat - Offline") {
-    List {
+    VStack(spacing: 12) {
         ConversationRowView(
             conversation: Conversation(
                 participantIds: ["1", "3"],
@@ -168,12 +207,14 @@ struct ConversationRowView: View {
             presenceService: PreviewPresenceService(isOnline: false),
             typingIndicatorText: nil
         )
+        .padding(.horizontal, 16)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(AppConstants.Colors.background)
 }
 
 #Preview("Group Chat") {
-    List {
+    VStack(spacing: 12) {
         ConversationRowView(
             conversation: Conversation(
                 participantIds: ["1", "2", "3", "4"],
@@ -188,12 +229,14 @@ struct ConversationRowView: View {
             presenceService: nil,
             typingIndicatorText: nil
         )
+        .padding(.horizontal, 16)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(AppConstants.Colors.background)
 }
 
 #Preview("Typing Indicator") {
-    List {
+    VStack(spacing: 12) {
         ConversationRowView(
             conversation: Conversation(
                 participantIds: ["1", "2"],
@@ -210,7 +253,63 @@ struct ConversationRowView: View {
             presenceService: PreviewPresenceService(isOnline: true),
             typingIndicatorText: "Alice Johnson is typing..."
         )
+        .padding(.horizontal, 16)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(AppConstants.Colors.background)
+}
+
+#Preview("Multiple Rows - Glass Effect") {
+    ScrollView {
+        VStack(spacing: 12) {
+            ConversationRowView(
+                conversation: Conversation(
+                    participantIds: ["1", "2"],
+                    participantNames: ["1": "Me", "2": "Alice Johnson"],
+                    lastMessage: "Hey, how are you?",
+                    lastMessageTimestamp: Date(),
+                    unreadCount: 3
+                ),
+                currentUserId: "1",
+                otherUser: User(id: "2", email: "alice@test.com", displayName: "Alice Johnson"),
+                presenceService: PreviewPresenceService(isOnline: true),
+                typingIndicatorText: nil
+            )
+            
+            ConversationRowView(
+                conversation: Conversation(
+                    participantIds: ["1", "3"],
+                    participantNames: ["1": "Me", "3": "Bob Smith"],
+                    lastMessage: "Talk to you later!",
+                    lastMessageTimestamp: Date().addingTimeInterval(-3600),
+                    unreadCount: 0
+                ),
+                currentUserId: "1",
+                otherUser: User(id: "3", email: "bob@test.com", displayName: "Bob Smith"),
+                presenceService: PreviewPresenceService(isOnline: false),
+                typingIndicatorText: nil
+            )
+            
+            ConversationRowView(
+                conversation: Conversation(
+                    participantIds: ["1", "2", "3", "4"],
+                    participantNames: ["1": "Me", "2": "Alice", "3": "Bob", "4": "Charlie"],
+                    isGroup: true,
+                    groupName: "Team Chat",
+                    lastMessage: "Alice: Great idea!",
+                    lastMessageTimestamp: Date().addingTimeInterval(-300),
+                    unreadCount: 1
+                ),
+                currentUserId: "1",
+                otherUser: nil,
+                presenceService: nil,
+                typingIndicatorText: nil
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(AppConstants.Colors.background)
 }
 

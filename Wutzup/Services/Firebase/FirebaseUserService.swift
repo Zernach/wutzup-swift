@@ -30,4 +30,16 @@ class FirebaseUserService: UserService {
         
         return user
     }
+    
+    func updatePersonality(userId: String, personality: String?) async throws {
+        var updateData: [String: Any] = [:]
+        
+        if let personality = personality {
+            updateData["personality"] = personality
+        } else {
+            updateData["personality"] = FieldValue.delete()
+        }
+        
+        try await db.collection("users").document(userId).updateData(updateData)
+    }
 }

@@ -95,11 +95,13 @@ class AppState: ObservableObject {
                     self.chatListViewModel.stopObserving()
                     self.chatListViewModel.conversations = []
                     self.hasRequestedNotificationPermission = false
-                }
-
-                // Update presence when auth state changes
-                if let user = user {
+                } else if let user = user {
+                    // 🔥 FIX: Delay async operations to next run loop to avoid multiple updates per frame
+                    // This prevents "NavigationRequestObserver tried to update multiple times per frame" error
                     Task { @MainActor in
+                        // Yield to next run loop before making state changes
+                        await Task.yield()
+                        
                         try? await self.presenceService.setOnline(userId: user.id)
                         
                         // 🔥 FIX: Load conversations immediately on auth success

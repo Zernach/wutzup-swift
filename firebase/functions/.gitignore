@@ -3,4 +3,11 @@ __pycache__/
 
 # Python virtual environment
 venv/
+
+# Environment variables (contains secrets - DO NOT COMMIT!)
+.env
+.env.local
+.env.*.local
+
+# Local files
 *.local

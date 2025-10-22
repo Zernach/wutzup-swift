@@ -210,6 +210,10 @@ private final class PreviewUserService: UserService {
         }
         return user
     }
+    
+    func updatePersonality(userId: String, personality: String?) async throws {
+        // No-op for preview
+    }
 }
 
 private class PreviewPresenceService: PresenceService {

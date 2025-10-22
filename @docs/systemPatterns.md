@@ -1125,6 +1125,306 @@ recurrence! 🛡️**
 
 ---
 
+## SwiftUI State Update Patterns (CRITICAL)
+
+### ⚠️ Task.yield() for Multiple Frame Updates (REQUIRED)
+
+**CRITICAL ISSUE**: SwiftUI's NavigationRequestObserver (and other view update mechanisms) can error when receiving multiple state updates within a single rendering frame.
+
+**Error Message**: `"Update NavigationRequestObserver tried to update multiple times per frame"`
+
+**Symptoms**:
+- Console errors during navigation
+- Navigation glitches or delays
+- Visual inconsistencies
+- State updates not completing properly
+
+**THE SOLUTION**: Use `Task.yield()` to defer state changes to next frame cycle.
+
+### Required Pattern for Multiple State Updates
+
+**❌ NEVER DO THIS:**
+
+```swift
+// DON'T: Multiple state updates in same frame
+func observeAuthState() {
+    authService.authStatePublisher
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] user in
+            self?.currentUser = user           // Frame 1: Update 1
+            self?.isAuthenticated = user != nil // Frame 1: Update 2
+            
+            Task { @MainActor in
+                // Frame 1: Updates 3, 4, 5... all in same frame!
+                await self?.loadData()
+                self?.showPermissionPrompt = true
+                self?.navigationState.push()
+            }
+        }
+}
+```
+
+**✅ ALWAYS DO THIS:**
+
+```swift
+// DO: Use Task.yield() to defer updates to next frame
+func observeAuthState() {
+    authService.authStatePublisher
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] user in
+            self?.currentUser = user           // Frame 1: Update 1
+            self?.isAuthenticated = user != nil // Frame 1: Update 2
+            
+            Task { @MainActor in
+                // Yield to next run loop before making more state changes
+                await Task.yield()  // ✅ Frame completes here
+                
+                // Frame 2: Updates happen in next frame cycle
+                await self?.loadData()
+                self?.showPermissionPrompt = true
+                self?.navigationState.push()
+            }
+        }
+}
+```
+
+### Implementation Guidelines
+
+**1. In Combine Publishers with State Updates**
+
+```swift
+class AppState: ObservableObject {
+    @Published var user: User?
+    @Published var isLoading: Bool = false
+    @Published var conversations: [Conversation] = []
+    
+    func observeAuth() {
+        authPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] user in
+                // Synchronous updates (Frame 1)
+                self?.user = user
+                self?.isLoading = false
+                
+                // Async updates (Frame 2+)
+                Task { @MainActor in
+                    await Task.yield() // ✅ Critical: defer to next frame
+                    
+                    // Now safe to make more state changes
+                    await self?.loadConversations()
+                    self?.showNotification = true
+                }
+            }
+            .store(in: &cancellables)
+    }
+}
+```
+
+**2. In Navigation State Changes**
+
+```swift
+class ChatListView: View {
+    @State private var navigationPath = NavigationPath()
+    
+    @MainActor
+    func navigateToConversation(_ conversation: Conversation) {
+        // Update data model first (synchronous)
+        viewModel.addConversation(conversation)
+        
+        // Navigation changes in next frame
+        Task { @MainActor in
+            await Task.yield() // ✅ Critical: defer navigation updates
+            
+            // Now safe to modify navigation path
+            if !navigationPath.isEmpty {
+                navigationPath.removeLast()
+            }
+            navigationPath.append(conversation)
+        }
+    }
+}
+```
+
+**3. In View Lifecycle Methods**
+
+```swift
+struct ContentView: View {
+    @StateObject var viewModel: ViewModel
+    @State private var showSheet = false
+    
+    var body: some View {
+        VStack { /* ... */ }
+            .onAppear {
+                Task { @MainActor in
+                    await Task.yield() // ✅ Let view finish appearing
+                    
+                    // Safe to trigger state changes
+                    await viewModel.loadInitialData()
+                    showSheet = viewModel.needsOnboarding
+                }
+            }
+    }
+}
+```
+
+### When to Use Task.yield()
+
+**✅ REQUIRED:**
+- Making multiple state updates from Combine sinks
+- Updating navigation state programmatically
+- Triggering async operations that update multiple @Published properties
+- Batching multiple @State or @Published property updates
+- In onAppear/onDisappear when triggering state changes
+- After setting user/auth state that triggers cascading updates
+
+**✅ RECOMMENDED:**
+- Before showing/dismissing sheets programmatically
+- Before navigation push/pop operations
+- When updating multiple view models simultaneously
+- In callbacks from child views that trigger parent state changes
+
+**⚠️ NOT NEEDED:**
+- Single state update with no cascading effects
+- User-triggered actions (button taps) that don't cascade
+- Simple computed properties
+- Read-only operations
+
+### Technical Explanation
+
+**SwiftUI Frame Cycle**:
+```
+Frame N:
+  1. Input Processing
+  2. State Updates
+  3. View Computation (body)
+  4. Layout
+  5. Render
+  
+Task.yield() here
+  ↓
+  
+Frame N+1:
+  1. Input Processing
+  2. State Updates (resumed task)
+  3. View Computation
+  4. Layout
+  5. Render
+```
+
+**What Task.yield() Does**:
+1. Suspends the current task
+2. Allows current frame cycle to complete fully
+3. Returns control to the run loop
+4. Resumes task in next frame cycle
+5. Subsequent state changes happen in fresh frame
+
+**Why This Works**:
+- Each frame gets distinct, non-overlapping state updates
+- Navigation system processes changes sequentially
+- View updates don't conflict with each other
+- SwiftUI has time to reconcile state between updates
+
+### Real-World Example: Auth State Flow
+
+```swift
+// BEFORE (BROKEN): Multiple updates per frame
+authPublisher.sink { user in
+    self.currentUser = user              // Update 1
+    self.isAuthenticated = user != nil   // Update 2
+    
+    Task { @MainActor in
+        await loadConversations()        // Update 3 (triggers @Published)
+        self.showPrompt = true           // Update 4
+        navigationPath.append(route)     // Update 5
+    }
+}
+// ❌ Error: NavigationRequestObserver updated 5 times in one frame!
+
+// AFTER (FIXED): Updates spread across frames
+authPublisher.sink { user in
+    self.currentUser = user              // Frame 1: Update 1
+    self.isAuthenticated = user != nil   // Frame 1: Update 2
+    
+    Task { @MainActor in
+        await Task.yield()               // ✅ Frame 1 completes
+        
+        // Frame 2+: Remaining updates
+        await loadConversations()        // Frame 2: Update 3
+        self.showPrompt = true           // Frame 2: Update 4
+        navigationPath.append(route)     // Frame 2: Update 5
+    }
+}
+// ✅ Success: Updates spread across multiple frames!
+```
+
+### Prevention Checklist
+
+Before committing code with state updates, check:
+
+- [ ] Are multiple @Published properties updated in sequence?
+- [ ] Does a Combine sink trigger async operations with state changes?
+- [ ] Are navigation path changes made programmatically?
+- [ ] Does auth state change trigger cascading updates?
+- [ ] Are sheets/alerts shown after state updates?
+- [ ] Do view lifecycle methods trigger multiple updates?
+
+If **any** of the above are true → Use `Task.yield()`!
+
+### Common Patterns
+
+**Pattern: Auth State → Load Data**
+```swift
+Task { @MainActor in
+    await Task.yield()
+    await loadUserData()
+    await loadConversations()
+    startObservingPresence()
+}
+```
+
+**Pattern: Navigation After Data Update**
+```swift
+Task { @MainActor in
+    viewModel.updateData()
+    await Task.yield()
+    navigationPath.append(newRoute)
+}
+```
+
+**Pattern: Cascading UI Updates**
+```swift
+Task { @MainActor in
+    await Task.yield()
+    showLoadingIndicator = false
+    showSuccessMessage = true
+    dismissAfterDelay()
+}
+```
+
+### Testing
+
+Verify no multiple-update errors:
+1. Monitor console for NavigationRequestObserver errors
+2. Test navigation flows (push, pop, replace)
+3. Test login/logout cycles
+4. Test rapid state changes (typing, scrolling)
+5. Profile with Instruments (no dropped frames)
+
+### Summary: Task.yield() Rules
+
+1. ✅ **ALWAYS** use `await Task.yield()` before cascading state updates
+2. ✅ **ALWAYS** yield at start of Task when triggered from Combine sink
+3. ✅ **ALWAYS** yield before programmatic navigation changes
+4. ✅ **ALWAYS** yield in onAppear if triggering state updates
+5. ✅ **ALWAYS** yield after auth state changes that trigger data loads
+6. ❌ **NEVER** make multiple navigation path changes without yield
+7. ❌ **NEVER** update multiple @Published properties without yield
+8. ❌ **NEVER** assume SwiftUI will batch updates automatically
+
+**This pattern prevents navigation errors and ensures smooth UI updates! 🎯**
+
+---
+
 ## Firebase Architecture Benefits Summary
 
 ### What Firebase Eliminates

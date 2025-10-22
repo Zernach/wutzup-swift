@@ -16,6 +16,7 @@ struct User: Identifiable, Codable, Hashable, Sendable {
     var fcmToken: String?
     var createdAt: Date
     var lastSeen: Date?
+    var personality: String?
 
     // Explicit CodingKeys to ensure proper encoding/decoding
     enum CodingKeys: String, CodingKey {
@@ -26,9 +27,10 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         case fcmToken
         case createdAt
         case lastSeen
+        case personality
     }
 
-    init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil) {
+    init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil, personality: String? = nil) {
         self.id = id
         self.email = email
         self.displayName = displayName
@@ -36,6 +38,7 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         self.fcmToken = fcmToken
         self.createdAt = createdAt
         self.lastSeen = lastSeen
+        self.personality = personality
     }
 
     // Initialize from Firestore document
@@ -64,6 +67,7 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         self.displayName = displayName
         self.profileImageUrl = data["profileImageUrl"] as? String
         self.fcmToken = data["fcmToken"] as? String
+        self.personality = data["personality"] as? String
 
         if let createdAtTimestamp = data["createdAt"] as? Timestamp {
             self.createdAt = createdAtTimestamp.dateValue()
@@ -97,6 +101,9 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         }
         if let lastSeen = lastSeen {
             data["lastSeen"] = Timestamp(date: lastSeen)
+        }
+        if let personality = personality {
+            data["personality"] = personality
         }
 
         return data

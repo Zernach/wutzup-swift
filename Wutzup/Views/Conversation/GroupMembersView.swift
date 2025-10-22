@@ -11,6 +11,7 @@ struct GroupMembersView: View {
     @Environment(\.dismiss) private var dismiss
     let conversation: Conversation
     let userService: UserService
+    let presenceService: PresenceService
     
     @State private var members: [User] = []
     @State private var isLoading = true
@@ -39,11 +40,12 @@ struct GroupMembersView: View {
                         Section {
                             ForEach(members) { member in
                                 HStack(spacing: 12) {
-                                    // Profile Image
+                                    // Profile Image with online status
                                     UserProfileImageView(
                                         user: member,
                                         size: 44,
-                                        showOnlineStatus: false
+                                        showOnlineStatus: true,
+                                        presenceService: presenceService
                                     )
                                     
                                     // Member Info
@@ -122,7 +124,8 @@ struct GroupMembersView: View {
     
     GroupMembersView(
         conversation: previewConversation,
-        userService: PreviewUserService()
+        userService: PreviewUserService(),
+        presenceService: PreviewPresenceService()
     )
 }
 
@@ -157,6 +160,35 @@ private final class PreviewUserService: UserService {
             throw NSError(domain: "PreviewUserService", code: 404, userInfo: [NSLocalizedDescriptionKey: "User not found"])
         }
         return user
+    }
+    
+    func updatePersonality(userId: String, personality: String?) async throws { }
+}
+
+private final class PreviewPresenceService: PresenceService {
+    func setOnline(userId: String) async throws { }
+    
+    func setOffline(userId: String) async throws { }
+    
+    func observePresence(userId: String) -> AsyncStream<Presence> {
+        AsyncStream { continuation in
+            let presence = Presence(
+                userId: userId,
+                status: userId == "user1" ? .online : .offline, // Make Alice online for variety
+                lastSeen: Date(),
+                typing: [:]
+            )
+            continuation.yield(presence)
+            continuation.finish()
+        }
+    }
+    
+    func setTyping(userId: String, conversationId: String, isTyping: Bool) async throws { }
+    
+    func observeTyping(conversationId: String) -> AsyncStream<[String: Bool]> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
     }
 }
 

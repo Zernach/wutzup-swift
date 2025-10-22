@@ -610,6 +610,45 @@ backend/WebSocket to build!)
 
 ## Recent Critical Bug Fixes
 
+### ✅ NavigationRequestObserver Multiple Updates Error (October 21, 2025)
+
+**Status**: RESOLVED  
+**Severity**: MEDIUM - Poor UX, console errors  
+**Time to Fix**: ~30 minutes
+
+**Problem**: "Update NavigationRequestObserver tried to update multiple times per frame" error occurring during navigation and auth state changes.
+
+**Root Cause**: Multiple state updates happening within a single SwiftUI rendering frame:
+- AppState.observeAuthState: Nested Task creating immediate state updates after Combine sink
+- ChatListView.navigateToConversation: Multiple navigation path changes synchronously
+- All updates processed in same frame cycle, overwhelming NavigationRequestObserver
+
+**Impact**:
+- ❌ Console errors during navigation
+- ❌ Potential navigation glitches
+- ❌ Poor developer experience
+- ❌ Could lead to UI inconsistencies
+
+**Solution**: Use `Task.yield()` to defer state changes to next frame cycle:
+1. Added `await Task.yield()` at start of AppState auth state Task
+2. Wrapped navigation path changes in Task with yield in ChatListView
+3. Separates state updates across multiple frame cycles
+4. NavigationRequestObserver processes updates sequentially
+
+**Files Fixed**:
+- `wutzup/App/AppState.swift` - Added yield in observeAuthState Task
+- `wutzup/Views/ChatList/ChatListView.swift` - Wrapped navigation changes in Task with yield
+
+**Documentation**:
+- `@docs/NAVIGATION_UPDATE_FIX.md` - Complete technical analysis and solution
+
+**Benefits**:
+- ✅ No more NavigationRequestObserver errors
+- ✅ Smooth navigation transitions
+- ✅ Proper frame-by-frame state updates
+- ✅ Better SwiftUI state management pattern
+- ✅ Prevents future similar issues
+
 ### ✅ FCM Token Registration Race Condition (October 21, 2025)
 
 **Status**: RESOLVED **Severity**: HIGH - Push notifications fail silently **Time to Fix**: ~1 hour

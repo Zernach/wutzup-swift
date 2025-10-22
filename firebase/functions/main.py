@@ -5,13 +5,24 @@ This module contains Firebase Cloud Functions for handling:
 - Push notifications when messages are created
 - User presence tracking
 - Conversation updates
+- AI-powered response suggestions
 """
 
 from firebase_functions import firestore_fn, https_fn, options
 from firebase_admin import initialize_app, firestore, messaging
 from google.cloud.firestore_v1.base_query import FieldFilter
-from typing import Any
+from typing import Any, List, Dict
 import logging
+import os
+import json
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+# LangChain imports
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
 
 # Initialize Firebase Admin SDK
 app = initialize_app()
@@ -304,6 +315,187 @@ def health_check(req: https_fn.Request) -> https_fn.Response:
     Health check endpoint.
     """
     return https_fn.Response("OK", status=200)
+
+
+# ============================================================================
+# AI Response Generation (LangChain + OpenAI)
+# ============================================================================
+
+@https_fn.on_request()
+def generate_response_suggestions(req: https_fn.Request) -> https_fn.Response:
+    """
+    Generate AI-powered response suggestions using LangChain and OpenAI.
+    
+    Request Body:
+    {
+        "conversation_history": [
+            {
+                "sender_id": "user123",
+                "sender_name": "Alice",
+                "content": "Hey, want to grab coffee?",
+                "timestamp": "2025-10-21T10:00:00Z"
+            },
+            ...
+        ],
+        "user_personality": "I'm friendly and casual, like to use emojis"
+    }
+    
+    Response:
+    {
+        "positive_response": "Sure! I'd love to grab coffee. What time works for you? ☕",
+        "negative_response": "Thanks for asking, but I'm pretty busy today. Maybe another time?"
+    }
+    """
+    try:
+        # Parse request body
+        data = req.get_json()
+        
+        if not data:
+            return https_fn.Response(
+                json.dumps({"error": "Missing request body"}),
+                status=400,
+                headers={"Content-Type": "application/json"}
+            )
+        
+        conversation_history = data.get("conversation_history", [])
+        user_personality = data.get("user_personality")
+        
+        if not conversation_history:
+            return https_fn.Response(
+                json.dumps({"error": "conversation_history is required"}),
+                status=400,
+                headers={"Content-Type": "application/json"}
+            )
+        
+        # Get OpenAI API key from environment variable
+        # Set this with: firebase functions:config:set openai.api_key="your-key-here"
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
+        
+        if not openai_api_key:
+            logger.error("OPENAI_API_KEY not set in environment")
+            return https_fn.Response(
+                json.dumps({"error": "OpenAI API key not configured"}),
+                status=500,
+                headers={"Content-Type": "application/json"}
+            )
+        
+        # Format conversation history
+        conversation_text = "\n".join([
+            f"{msg.get('sender_name', 'Unknown')}: {msg.get('content', '')}"
+            for msg in conversation_history[-10:]  # Last 10 messages
+        ])
+        
+        # Build personality context
+        personality_context = ""
+        if user_personality:
+            personality_context = f"\n\nThe user's personality: {user_personality}"
+        
+        # Create LangChain prompt
+        system_prompt = """You are a helpful AI assistant that generates response suggestions for messaging conversations.
+Your task is to generate TWO different response options based on the conversation history:
+
+1. A POSITIVE response: Agreeable, enthusiastic, accepting the proposal/question
+2. A NEGATIVE response: Polite decline, suggesting alternative, or gentle rejection
+
+Both responses should:
+- Match the user's personality if provided
+- Be natural and conversational
+- Be appropriate length (1-3 sentences)
+- Sound authentic, not robotic
+- Consider the context of the conversation
+
+Return ONLY a valid JSON object with this exact structure:
+{
+  "positive_response": "your positive response here",
+  "negative_response": "your negative response here"
+}"""
+        
+        user_prompt = f"""Conversation history:
+{conversation_text}
+{personality_context}
+
+Generate two response options (positive and negative) that the user could send next."""
+        
+        # Initialize ChatOpenAI
+        llm = ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=0.7,
+            openai_api_key=openai_api_key
+        )
+        
+        # Generate responses
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+        
+        response = llm.invoke(messages)
+        response_text = response.content
+        
+        logger.info(f"OpenAI response: {response_text}")
+        
+        # Parse JSON response
+        try:
+            # Try to extract JSON if wrapped in markdown code blocks
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            elif "```" in response_text:
+                json_start = response_text.find("```") + 3
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            
+            response_data = json.loads(response_text)
+            
+            # Validate response structure
+            if "positive_response" not in response_data or "negative_response" not in response_data:
+                raise ValueError("Invalid response structure")
+            
+            return https_fn.Response(
+                json.dumps(response_data),
+                status=200,
+                headers={"Content-Type": "application/json"}
+            )
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse OpenAI response: {e}")
+            logger.error(f"Raw response: {response_text}")
+            
+            # Fallback: create structured response from text
+            lines = response_text.strip().split("\n")
+            positive = ""
+            negative = ""
+            
+            for line in lines:
+                if "positive" in line.lower() and not positive:
+                    positive = line.split(":", 1)[-1].strip().strip('"')
+                elif "negative" in line.lower() and not negative:
+                    negative = line.split(":", 1)[-1].strip().strip('"')
+            
+            if positive and negative:
+                return https_fn.Response(
+                    json.dumps({
+                        "positive_response": positive,
+                        "negative_response": negative
+                    }),
+                    status=200,
+                    headers={"Content-Type": "application/json"}
+                )
+            else:
+                return https_fn.Response(
+                    json.dumps({"error": "Failed to parse AI response"}),
+                    status=500,
+                    headers={"Content-Type": "application/json"}
+                )
+        
+    except Exception as e:
+        logger.error(f"Error in generate_response_suggestions: {e}", exc_info=True)
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json"}
+        )
 
 
 # ============================================================================
