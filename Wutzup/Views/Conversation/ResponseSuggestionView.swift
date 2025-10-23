@@ -8,35 +8,51 @@
 import SwiftUI
 
 struct ResponseSuggestionView: View {
-    let suggestion: AIResponseSuggestion
+    let suggestion: AIResponseSuggestion?
+    let isLoading: Bool
     let onSelect: (String) -> Void
     let onDismiss: () -> Void
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                AppConstants.Colors.background
-                    .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // Header
-                        VStack(spacing: 8) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 40))
-                                .foregroundColor(AppConstants.Colors.accent)
-                            
-                            Text("AI Suggestions")
-                                .font(.title2.bold())
-                                .foregroundColor(AppConstants.Colors.textPrimary)
-                            
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header - Always Visible
+                    VStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 40))
+                            .foregroundColor(AppConstants.Colors.accent)
+                        
+                        Text("AI Suggestions")
+                            .font(.title2.bold())
+                            .foregroundColor(AppConstants.Colors.textPrimary)
+                        
+                        if !isLoading {
                             Text("Choose a response or edit before sending")
                                 .font(.body)
                                 .foregroundColor(AppConstants.Colors.textSecondary)
                                 .multilineTextAlignment(.center)
                         }
-                        .padding(.top, 20)
-                        
+                    }
+                    .padding(.top, 20)
+                    
+                    if isLoading {
+                        // Loading State
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.5)
+                                .tint(AppConstants.Colors.accent)
+                            
+                            Text("Generating AI Replies...")
+                                .font(.headline)
+                                .foregroundColor(AppConstants.Colors.textPrimary)
+                            
+                            Text("AI is analyzing the conversation")
+                                .font(.subheadline)
+                                .foregroundColor(AppConstants.Colors.textSecondary)
+                        }
+                        .padding(.top, 40) 
+                    } else if let suggestion = suggestion {
                         // Positive Response
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
@@ -116,9 +132,8 @@ struct ResponseSuggestionView: View {
                             }
                         }
                         .padding(.horizontal)
-                        
-                        Spacer()
                     }
+                    Spacer()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -139,6 +154,7 @@ struct ResponseSuggestionView: View {
             positiveResponse: "That sounds great! I'd love to join you for coffee tomorrow. What time works best for you?",
             negativeResponse: "Thanks for the invite, but I'm pretty swamped this week. Maybe we can catch up another time?"
         ),
+        isLoading: false,
         onSelect: { _ in },
         onDismiss: {}
     )

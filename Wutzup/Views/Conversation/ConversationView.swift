@@ -154,17 +154,16 @@ struct ConversationView: View {
             )
         }
         .sheet(isPresented: $viewModel.showingAISuggestion) {
-            if let suggestion = viewModel.aiSuggestion {
-                ResponseSuggestionView(
-                    suggestion: suggestion,
-                    onSelect: { response in
-                        viewModel.selectAISuggestion(response)
-                    },
-                    onDismiss: {
-                        viewModel.dismissAISuggestion()
-                    }
-                )
-            }
+            ResponseSuggestionView(
+                suggestion: viewModel.aiSuggestion,
+                isLoading: viewModel.isGeneratingAI || viewModel.isGeneratingCoreMLAI,
+                onSelect: { response in
+                    viewModel.selectAISuggestion(response)
+                },
+                onDismiss: {
+                    viewModel.dismissAISuggestion()
+                }
+            )
         }
         .sheet(isPresented: $viewModel.showingGIFGenerator) {
             GIFGeneratorView(viewModel: viewModel)

@@ -23,7 +23,7 @@ struct AIMenuView: View {
                 VStack(spacing: 0) {
                     // Concise Reply (CoreML)
                     menuItem(
-                        icon: "sparkles",
+                        icon: "bolt.fill",
                         iconColor: AppConstants.Colors.brightGreen,
                         title: "Concise Reply",
                         subtitle: "Fast, on-device",
@@ -147,17 +147,22 @@ struct AIMenuView: View {
                 // Icon
                 ZStack {
                     Circle()
-                        .fill(iconColor.opacity(0.15))
+                        .fill(iconColor.opacity(1.0))
+                        .frame(width: 36, height: 36)
+                    
+                    // Dark overlay for contrast
+                    Circle()
+                        .fill(.black.opacity(0.5))
                         .frame(width: 36, height: 36)
                     
                     if isLoading {
                         ProgressView()
-                            .tint(iconColor)
+                            .tint(.white)
                             .scaleEffect(0.8)
                     } else {
                         Image(systemName: icon)
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(iconColor)
+                            .foregroundColor(.white)
                     }
                 }
                 

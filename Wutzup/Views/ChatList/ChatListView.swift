@@ -18,7 +18,6 @@ struct ChatListView: View {
     }
 
     var body: some View {
-        
         return
         NavigationStack(path: $navigationPath) {
             ZStack {
@@ -83,7 +82,6 @@ struct ChatListView: View {
                         guard let currentUser = appState.currentUser else {
                             return nil
                         }
-
                         // Call with user properties
                         return await viewModel.createDirectConversation(
                             with: user.id,
@@ -109,22 +107,6 @@ struct ChatListView: View {
             }
             .navigationDestination(for: AccountRoute.self) { _ in
                 AccountView(presenceService: appState.presenceService)
-            }
-            .onAppear {
-                Task { @MainActor in
-                    // Only fetch if not already loading and conversations haven't been loaded
-                    // AppState now handles the initial load on auth success
-                    if !viewModel.isLoading && viewModel.conversations.isEmpty {
-                        await viewModel.fetchConversations()
-                    }
-                    // Always ensure observing is active when view appears
-                    viewModel.startObserving()
-                }
-            }
-            .onDisappear {
-                // Note: We don't stop observing on disappear anymore
-                // This ensures conversations continue to update in the background
-                // viewModel.stopObserving()
             }
         }
         .toolbarBackground(AppConstants.Colors.background, for: .navigationBar)
@@ -169,6 +151,7 @@ struct ChatListView: View {
                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+                .id(conversation.id) // Ensure SwiftUI can track row identity properly
             }
         }
         .scrollContentBackground(.hidden)

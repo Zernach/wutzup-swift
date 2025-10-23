@@ -59,6 +59,11 @@ class ChatListViewModel: ObservableObject {
     }
 
     func startObserving() {
+        // Prevent starting observation multiple times
+        guard !isObserving else {
+            return
+        }
+        
         guard let userId = authService.currentUser?.id else {
             return
         }
@@ -297,14 +302,21 @@ class ChatListViewModel: ObservableObject {
 
     func upsertConversation(_ conversation: Conversation) {
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
+            // Check if timestamp changed (only sort if it did)
+            let oldTimestamp = conversations[index].lastMessageTimestamp ?? conversations[index].updatedAt
+            let newTimestamp = conversation.lastMessageTimestamp ?? conversation.updatedAt
+            
             conversations[index] = conversation
+            
+            // Only sort if the timestamp changed (performance optimization)
+            if oldTimestamp != newTimestamp {
+                conversations.sort { ($0.lastMessageTimestamp ?? $0.updatedAt) > ($1.lastMessageTimestamp ?? $1.updatedAt) }
+            }
         } else {
+            // New conversation - insert and sort
             conversations.append(conversation)
+            conversations.sort { ($0.lastMessageTimestamp ?? $0.updatedAt) > ($1.lastMessageTimestamp ?? $1.updatedAt) }
         }
-
-        // Sort by most recent message
-        conversations.sort { ($0.lastMessageTimestamp ?? $0.updatedAt) > ($1.lastMessageTimestamp ?? $1.updatedAt) }
-        
     }
 
     func createDirectConversation(with otherUserId: String, otherDisplayName: String, otherEmail: String, currentUser: User?) async -> Conversation? {

@@ -576,6 +576,8 @@ class ConversationViewModel: ObservableObject {
             return
         }
         
+        // Immediately show the sheet with loading state
+        showingAISuggestion = true
         isGeneratingAI = true
         
         do {
@@ -589,10 +591,10 @@ class ConversationViewModel: ObservableObject {
             
             
             aiSuggestion = suggestion
-            showingAISuggestion = true
             
         } catch {
             errorMessage = "Failed to generate suggestions: \(error.localizedDescription)"
+            showingAISuggestion = false  // Close sheet on error
         }
         
         isGeneratingAI = false
@@ -616,6 +618,8 @@ class ConversationViewModel: ObservableObject {
             return
         }
         
+        // Immediately show the sheet with loading state
+        showingAISuggestion = true
         isGeneratingCoreMLAI = true
         
         do {
@@ -629,10 +633,10 @@ class ConversationViewModel: ObservableObject {
             
             
             aiSuggestion = suggestion
-            showingAISuggestion = true
             
         } catch {
             errorMessage = "Failed to generate suggestions: \(error.localizedDescription)"
+            showingAISuggestion = false  // Close sheet on error
         }
         
         isGeneratingCoreMLAI = false
