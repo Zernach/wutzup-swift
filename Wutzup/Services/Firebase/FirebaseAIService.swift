@@ -28,14 +28,15 @@ class FirebaseAIService: AIService {
             )
         }
         
-        // Prepare conversation history
+        // Prepare conversation history with current user context
         let messages = conversationHistory.map { message in
             return [
                 "sender_id": message.senderId,
-                "sender_name": message.senderName,
+                "sender_name": message.senderName ?? "Unknown",
                 "content": message.content,
-                "timestamp": ISO8601DateFormatter().string(from: message.timestamp)
-            ]
+                "timestamp": ISO8601DateFormatter().string(from: message.timestamp),
+                "is_from_current_user": message.isFromCurrentUser
+            ] as [String : Any]
         }
         
         // Create request body

@@ -43,15 +43,12 @@ class FirebaseNotificationService: NSObject, NotificationService {
         
         // Log the token for debugging
         let tokenString = token.map { String(format: "%02.2hhx", $0) }.joined()
-        print("📱 APNs Token: \(tokenString)")
     }
     
     func updateFCMToken(userId: String, token: String) async throws {
-        print("💾 Saving FCM token for user: \(userId)")
         try await db.collection("users")
             .document(userId)
             .updateData(["fcmToken": token])
-        print("✅ FCM token saved successfully")
     }
 }
 
@@ -59,11 +56,9 @@ class FirebaseNotificationService: NSObject, NotificationService {
 extension FirebaseNotificationService: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let fcmToken = fcmToken else {
-            print("⚠️ No FCM token received")
             return
         }
         
-        print("🔑 [NotificationService] FCM Token received: \(fcmToken.prefix(20))...")
         
         // 🔥 FIX: Route token through AppState to handle auth race condition
         // AppState will save the token when auth is ready
@@ -78,7 +73,6 @@ extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        print("📬 Notification received in foreground")
         
         // Show notification even when app is in foreground
         completionHandler([.banner, .sound, .badge])
@@ -89,20 +83,17 @@ extension FirebaseNotificationService: UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        print("👆 User tapped notification")
         
         // Extract conversation ID from notification data
         let userInfo = response.notification.request.content.userInfo
         
         if let conversationId = userInfo["conversationId"] as? String {
-            print("📱 Opening conversation: \(conversationId)")
             
             // Notify AppState to navigate to conversation
             DispatchQueue.main.async {
                 self.onNotificationTap?(conversationId)
             }
         } else {
-            print("⚠️ No conversationId in notification payload")
         }
         
         completionHandler()

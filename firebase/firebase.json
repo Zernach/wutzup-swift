@@ -19,9 +19,13 @@
       "runtime": "python313"
     }
   ],
-  "storage": {
-    "rules": "storage.rules"
-  },
+  "storage": [
+    {
+      "target": "default",
+      "bucket": "wutzup-swift.appspot.com",
+      "rules": "storage.rules"
+    }
+  ],
   "emulators": {
     "auth": {
       "port": 9099

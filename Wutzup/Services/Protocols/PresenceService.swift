@@ -10,6 +10,7 @@ import Foundation
 enum PresenceStatus: String, Codable {
     case online
     case offline
+    case away
 }
 
 struct Presence: Codable {
@@ -29,6 +30,7 @@ struct Presence: Codable {
 protocol PresenceService: AnyObject {
     func setOnline(userId: String) async throws
     func setOffline(userId: String) async throws
+    func setAway(userId: String) async throws
     func observePresence(userId: String) -> AsyncStream<Presence>
     func setTyping(userId: String, conversationId: String, isTyping: Bool) async throws
     func observeTyping(conversationId: String) -> AsyncStream<[String: Bool]> // userId -> isTyping

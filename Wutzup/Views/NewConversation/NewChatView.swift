@@ -214,11 +214,16 @@ private final class PreviewUserService: UserService {
     func updatePersonality(userId: String, personality: String?) async throws {
         // No-op for preview
     }
+    
+    func updateProfileImageUrl(userId: String, imageUrl: String?) async throws {
+        // No-op for preview
+    }
 }
 
 private class PreviewPresenceService: PresenceService {
     func setOnline(userId: String) async throws { }
     func setOffline(userId: String) async throws { }
+    func setAway(userId: String) async throws { }
     
     func observePresence(userId: String) -> AsyncStream<Presence> {
         AsyncStream { continuation in

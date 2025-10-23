@@ -53,7 +53,6 @@ class FirebaseAuthService: AuthenticationService, ObservableObject {
                     // User loaded - auth check complete
                     self.isAuthCheckingSubject.send(false)
                 } catch {
-                    print("⚠️ Error loading user document: \(error)")
                     self.authStateSubject.send(nil)
                     // Error occurred - auth check complete (treat as no user)
                     self.isAuthCheckingSubject.send(false)

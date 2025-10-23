@@ -30,6 +30,16 @@ class FirebasePresenceService: PresenceService {
             ], merge: true)
     }
     
+    /// Set user as away (for backgrounded state)
+    func setAway(userId: String) async throws {
+        try await db.collection("presence")
+            .document(userId)
+            .setData([
+                "status": "away",
+                "lastSeen": Timestamp(date: Date())
+            ], merge: true)
+    }
+    
     func observePresence(userId: String) -> AsyncStream<Presence> {
         return AsyncStream { continuation in
             let listener = db.collection("presence")

@@ -81,7 +81,6 @@ struct MessageInputView: View {
             GeometryReader { geometry in
                 Color.clear
                     .onAppear {
-                        print("📏 [MessageInputView] Initial geometry: \(geometry.size)")
                     }
                     .preference(
                         key: MessageInputHeightKey.self,

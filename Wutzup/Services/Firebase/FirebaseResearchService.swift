@@ -44,9 +44,6 @@ class FirebaseResearchService: ResearchService {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
-        print("🔍 [FirebaseResearchService] Sending research request...")
-        print("   Prompt: \(prompt)")
-        print("   URL: \(url)")
         
         // Send request
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -56,13 +53,11 @@ class FirebaseResearchService: ResearchService {
             throw ResearchError.invalidResponse
         }
         
-        print("🔍 [FirebaseResearchService] Response status: \(httpResponse.statusCode)")
         
         guard httpResponse.statusCode == 200 else {
             // Try to parse error message
             if let errorJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let errorMessage = errorJSON["error"] as? String {
-                print("❌ [FirebaseResearchService] Error: \(errorMessage)")
                 throw ResearchError.serverError(errorMessage)
             }
             throw ResearchError.httpError(httpResponse.statusCode)
@@ -71,12 +66,9 @@ class FirebaseResearchService: ResearchService {
         // Parse response
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let summary = json["summary"] as? String else {
-            print("❌ [FirebaseResearchService] Failed to parse response")
             throw ResearchError.invalidResponse
         }
         
-        print("✅ [FirebaseResearchService] Research complete!")
-        print("   Summary length: \(summary.count) characters")
         
         return summary
     }

@@ -152,7 +152,6 @@ private struct InfoRow: View {
 
 #Preview {
     ResearchView { prompt in
-        print("Researching: \(prompt)")
         try? await Task.sleep(nanoseconds: 2_000_000_000)
     }
 }

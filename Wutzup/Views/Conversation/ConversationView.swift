@@ -27,6 +27,9 @@ struct ConversationView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
+                // Connection Status Banner
+                ConnectionStatusView()
+                
                 // Messages List
                 ScrollViewReader { proxy in
                 ScrollView {
@@ -61,9 +64,14 @@ struct ConversationView: View {
                             }
                             .padding(.horizontal)
                         }
+                        
+                        // Bottom spacer to prevent black space when content shrinks
+                        Color.clear
+                            .frame(height: 1)
                     }
                     .padding(.vertical)
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .onAppear {
                     scrollProxy = proxy
                     scrollToBottom()
@@ -78,11 +86,8 @@ struct ConversationView: View {
                     text: $viewModel.messageText,
                     isSending: viewModel.isSending,
                     onSend: { content in
-                        print("🔵 [ConversationView] Send button tapped")
                         Task { @MainActor in
-                            print("🔵 [ConversationView] About to call sendMessage()")
                             await viewModel.sendMessage(content: content)
-                            print("🔵 [ConversationView] sendMessage() completed")
                             scrollToBottom()
                         }
                     },
@@ -92,7 +97,6 @@ struct ConversationView: View {
                 )
             }
             .onPreferenceChange(MessageInputHeightKey.self) { height in
-                print("📏 [ConversationView] Input footer height changed: \(height)")
                 withAnimation(.easeInOut(duration: 0.2)) {
                     inputFooterHeight = height
                 }
@@ -163,9 +167,7 @@ struct ConversationView: View {
             }
         }
         .sheet(isPresented: $viewModel.showingGIFGenerator) {
-            GIFGeneratorView { prompt in
-                await viewModel.generateGIF(prompt: prompt)
-            }
+            GIFGeneratorView(viewModel: viewModel)
         }
         .sheet(isPresented: $viewModel.showingResearch) {
             ResearchView { prompt in
@@ -174,31 +176,7 @@ struct ConversationView: View {
         }
         .overlay(
             Group {
-                if viewModel.isGeneratingGIF {
-                    ZStack {
-                        Color.black.opacity(0.4)
-                            .ignoresSafeArea()
-                        
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .scaleEffect(1.5)
-                                .tint(AppConstants.Colors.accent)
-                            
-                            Text("Generating GIF...")
-                                .font(.headline)
-                                .foregroundColor(AppConstants.Colors.textPrimary)
-                            
-                            Text("This may take 5-10 seconds")
-                                .font(.subheadline)
-                                .foregroundColor(AppConstants.Colors.textSecondary)
-                        }
-                        .padding(32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(.ultraThinMaterial)
-                        )
-                    }
-                } else if viewModel.isConductingResearch {
+                if viewModel.isConductingResearch {
                     ZStack {
                         Color.black.opacity(0.4)
                             .ignoresSafeArea()
@@ -238,10 +216,25 @@ struct ConversationView: View {
             viewModel.stopObserving()
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
-            if newPhase == .active {
-                // Mark messages as delivered when app becomes active/foreground
-                Task {
+            Task { @MainActor in
+                switch newPhase {
+                case .active:
+                    // Resume listeners when app becomes active
+                    await viewModel.resumeListeners()
+                    
+                    // Mark messages as delivered when app becomes active/foreground
                     await viewModel.markUndeliveredMessagesAsDelivered()
+                    
+                case .background:
+                    // Pause listeners to save battery
+                    viewModel.pauseListeners()
+                    
+                case .inactive:
+                    // Do nothing for inactive (transitional state)
+                    break
+                    
+                @unknown default:
+                    break
                 }
             }
         }
@@ -340,6 +333,8 @@ private final class PreviewPresenceService: PresenceService {
     func setOnline(userId: String) async throws { }
     
     func setOffline(userId: String) async throws { }
+    
+    func setAway(userId: String) async throws { }
 
     func observePresence(userId: String) -> AsyncStream<Presence> {
         AsyncStream { continuation in
@@ -402,4 +397,6 @@ private final class PreviewUserServiceForConversation: UserService {
     }
     
     func updatePersonality(userId: String, personality: String?) async throws { }
+    
+    func updateProfileImageUrl(userId: String, imageUrl: String?) async throws { }
 }

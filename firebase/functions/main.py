@@ -392,9 +392,9 @@ def generate_response_suggestions(req: https_fn.Request) -> https_fn.Response:
                 headers={"Content-Type": "application/json"}
             )
         
-        # Format conversation history
+        # Format conversation history with current user context
         conversation_text = "\n".join([
-            f"{msg.get('sender_name', 'Unknown')}: {msg.get('content', '')}"
+            f"{'You' if msg.get('is_from_current_user', False) else msg.get('sender_name', 'Unknown')}: {msg.get('content', '')}"
             for msg in conversation_history[-10:]  # Last 10 messages
         ])
         
@@ -405,7 +405,14 @@ def generate_response_suggestions(req: https_fn.Request) -> https_fn.Response:
         
         # Create LangChain prompt
         system_prompt = """You are a helpful AI assistant that generates response suggestions for messaging conversations.
-Your task is to generate TWO different response options based on the conversation history:
+Your task is to generate TWO different response options based on the conversation history.
+
+In the conversation history:
+- Messages labeled "You" are from the USER who is requesting suggestions
+- All other messages are from OTHER PARTICIPANTS in the conversation
+- You are generating responses FOR the user (labeled "You")
+
+Generate these TWO response options:
 
 1. A POSITIVE response: Agreeable, enthusiastic, accepting the proposal/question
 2. A NEGATIVE response: Polite decline, suggesting alternative, or gentle rejection
@@ -416,6 +423,8 @@ Both responses should:
 - Be appropriate length (1-3 sentences)
 - Sound authentic, not robotic
 - Consider the context of the conversation
+- Respond to what OTHER PARTICIPANTS have said
+- If no other users have said anything, then generate a response that is contextual and reflects a logical next message from the current user.
 
 Return ONLY a valid JSON object with this exact structure:
 {
@@ -521,11 +530,11 @@ Generate two response options (positive and negative) that the user could send n
 ))
 def generate_gif(req: https_fn.Request) -> https_fn.Response:
     """
-    Generate a GIF from a single DALL-E image.
+    Generate a GIF from two DALL-E images.
     
     This function:
-    1. Generates 1 image using DALL-E 3
-    2. Converts to GIF format
+    1. Generates 2 images using DALL-E 3
+    2. Converts to animated GIF format
     3. Uploads to Firebase Storage
     4. Returns the public URL
     
@@ -537,7 +546,7 @@ def generate_gif(req: https_fn.Request) -> https_fn.Response:
     Response:
     {
         "gif_url": "https://storage.googleapis.com/.../animated.gif",
-        "frames_generated": 20
+        "frames_generated": 2
     }
     """
     try:
@@ -597,16 +606,17 @@ def generate_gif(req: https_fn.Request) -> https_fn.Response:
         # Initialize OpenAI client
         client = OpenAI(api_key=openai_api_key)
         
-        # Generate 1 frame with DALL-E (convert single image to GIF)
+        # Generate 2 frames with DALL-E
         frames = []
         
-        logger.info(f"🎨 Generating image...")
+        logger.info(f"🎨 Generating 2 frames...")
         
+        # Generate frame 1
         try:
-            # Generate image with DALL-E 3
+            logger.info(f"  🎨 Generating frame 1...")
             response = client.images.generate(
                 model="dall-e-3",
-                prompt=prompt,
+                prompt=f"{prompt}, first frame",
                 size="1024x1024",
                 quality="standard",
                 n=1
@@ -627,24 +637,60 @@ def generate_gif(req: https_fn.Request) -> https_fn.Response:
             
             frames.append(img)
             
-            logger.info(f"  ✅ Image generated")
+            logger.info(f"  ✅ Frame 1 generated")
             
         except Exception as e:
-            logger.error(f"  ❌ Error generating image: {e}")
-            raise Exception(f"Failed to generate image: {e}")
+            logger.error(f"  ❌ Error generating frame 1: {e}")
+            raise Exception(f"Failed to generate frame 1: {e}")
         
-        logger.info(f"✅ Generated image successfully")
+        # Generate frame 2
+        try:
+            logger.info(f"  🎨 Generating frame 2...")
+            response = client.images.generate(
+                model="dall-e-3",
+                prompt=f"{prompt}, second frame, slight variation",
+                size="1024x1024",
+                quality="standard",
+                n=1
+            )
+            
+            # Get image URL
+            image_url = response.data[0].url
+            
+            # Download image
+            img_response = requests.get(image_url)
+            img_response.raise_for_status()
+            
+            # Load image
+            img = Image.open(io.BytesIO(img_response.content))
+            
+            # Resize to optimize GIF size (512x512)
+            img = img.resize((512, 512), Image.Resampling.LANCZOS)
+            
+            frames.append(img)
+            
+            logger.info(f"  ✅ Frame 2 generated")
+            
+        except Exception as e:
+            logger.error(f"  ❌ Error generating frame 2: {e}")
+            raise Exception(f"Failed to generate frame 2: {e}")
+        
+        logger.info(f"✅ Generated 2 frames successfully")
         
         # Convert to GIF
-        logger.info("🎞️ Converting to GIF format...")
+        logger.info("🎞️ Converting to animated GIF format...")
         
         with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as temp_file:
             gif_path = temp_file.name
             
-            # Save as GIF (single frame)
+            # Save as animated GIF with 2 frames
             frames[0].save(
                 gif_path,
                 format='GIF',
+                save_all=True,
+                append_images=[frames[1]],
+                duration=500,  # 500ms per frame
+                loop=0,  # Loop forever
                 optimize=False
             )
         
@@ -679,7 +725,7 @@ def generate_gif(req: https_fn.Request) -> https_fn.Response:
         return https_fn.Response(
             json.dumps({
                 "gif_url": gif_url,
-                "frames_generated": 1
+                "frames_generated": 2
             }),
             status=200,
             headers={
@@ -853,6 +899,7 @@ Guidelines:
 - Keep the summary concise but informative (200-400 words)
 - Cite sources when mentioning specific claims
 - If information is conflicting, mention both perspectives
+- IMPORTANT: Do not mention your training date or knowledge cutoff. All information is from live web searches, not your training data.
 """
         
         user_prompt = f"""Research question: {prompt}

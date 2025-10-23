@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "wutzup-swift"
-  }
+  },
+  "targets": {
+    "wutzup-swift": {
+      "storage": {
+        "default": [
+          "wutzup-swift.appspot.com"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

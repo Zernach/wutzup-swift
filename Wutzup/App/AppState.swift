@@ -26,11 +26,19 @@ class AppState: ObservableObject {
     let presenceService: FirebasePresenceService
     let notificationService: FirebaseNotificationService
     
+    // Network and offline management
+    let networkMonitor = NetworkMonitor.shared
+    let offlineQueue = OfflineMessageQueue.shared
+    
+    // Lifecycle management
+    let lifecycleManager = AppLifecycleManager.shared
+    
     // Shared view models
     let chatListViewModel: ChatListViewModel
     
     private var cancellables = Set<AnyCancellable>()
     private var hasRequestedNotificationPermission = false
+    private var networkObserver: Any?
     
     // 🔥 FIX: Store pending FCM token to handle race condition
     private var pendingFCMToken: String?
@@ -62,9 +70,112 @@ class AppState: ObservableObject {
             }
         }
         
+        // Setup network monitoring and reconnection
+        setupNetworkMonitoring()
+        
+        // Setup lifecycle management
+        setupLifecycleManagement()
+        
         // Observe auth state and loading state
         observeAuthState()
         observeAuthLoadingState()
+    }
+    
+    deinit {
+        if let observer = networkObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    
+    // MARK: - Network Monitoring
+    
+    private func setupNetworkMonitoring() {
+        // Start network monitoring
+        networkMonitor.startMonitoring()
+        
+        // Setup reconnection observer
+        networkObserver = NotificationCenter.default.addObserver(
+            forName: .networkDidReconnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                let downtime = notification.userInfo?["downtime"] as? TimeInterval ?? 0
+                
+                
+                // Sync pending offline messages
+                await self.offlineQueue.syncPendingMessages(messageService: self.messageService)
+                
+                // If we were offline for more than 30 seconds, refresh conversations
+                if downtime > 30 {
+                    await self.chatListViewModel.fetchConversations()
+                }
+            }
+        }
+        
+    }
+    
+    // MARK: - Lifecycle Management
+    
+    private func setupLifecycleManagement() {
+        
+        // Handle foreground events
+        lifecycleManager.onForeground = { [weak self] backgroundDuration in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                
+                // Set presence to online if authenticated
+                if let userId = self.currentUser?.id {
+                    try? await self.presenceService.setOnline(userId: userId)
+                }
+                
+                // Sync offline queue
+                await self.offlineQueue.syncPendingMessages(messageService: self.messageService)
+                
+                // If we were in background for more than 30 seconds, refresh conversations
+                if let duration = backgroundDuration, duration > 30 {
+                    await self.chatListViewModel.fetchConversations()
+                }
+                
+                // Schedule next background refresh
+                self.lifecycleManager.scheduleBackgroundRefresh()
+            }
+        }
+        
+        // Handle background events
+        lifecycleManager.onBackground = { [weak self] in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                
+                // Set presence to away if authenticated
+                if let userId = self.currentUser?.id {
+                    try? await self.presenceService.setAway(userId: userId)
+                }
+            }
+        }
+        
+        // Handle listener pause
+        lifecycleManager.onPauseListeners = { [weak self] in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                self.chatListViewModel.pauseListeners()
+            }
+        }
+        
+        // Handle listener resume
+        lifecycleManager.onResumeListeners = { [weak self] in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                self.chatListViewModel.resumeListeners()
+            }
+        }
+        
     }
     
     /// Observe Firebase auth checking state
@@ -95,6 +206,11 @@ class AppState: ObservableObject {
                     self.chatListViewModel.stopObserving()
                     self.chatListViewModel.conversations = []
                     self.hasRequestedNotificationPermission = false
+                    
+                    // Clear image cache on logout for privacy and memory management
+                    Task {
+                        await ImageCache.shared.clearAll()
+                    }
                 } else if let user = user {
                     // 🔥 FIX: Delay async operations to next run loop to avoid multiple updates per frame
                     // This prevents "NavigationRequestObserver tried to update multiple times per frame" error
@@ -107,13 +223,11 @@ class AppState: ObservableObject {
                         // 🔥 FIX: Load conversations immediately on auth success
                         // This prevents the race condition where ChatListView appears
                         // before conversations are loaded
-                        print("🔥 [AppState] User authenticated, loading conversations...")
                         await self.chatListViewModel.fetchConversations()
                         self.chatListViewModel.startObserving()
                         
                         // 🔥 FIX: Save any pending FCM token now that auth is ready
                         if let pendingToken = self.pendingFCMToken {
-                            print("🔥 [AppState] Auth ready, saving pending FCM token...")
                             await self.saveFCMToken(pendingToken, for: user.id)
                             self.pendingFCMToken = nil
                         }
@@ -150,10 +264,10 @@ class AppState: ObservableObject {
                 showNotificationPermissionPrompt = true
                 
             case .denied:
-                print("ℹ️ Notification permissions previously denied")
+                break
                 
             case .authorized, .provisional, .ephemeral:
-                print("✅ Notification permissions already granted")
+                break
                 
             @unknown default:
                 break
@@ -167,22 +281,18 @@ class AppState: ObservableObject {
             let granted = try await notificationService.requestPermission()
             
             if granted {
-                print("✅ Notification permission granted!")
                 
                 // Register for remote notifications to get APNs token
                 #if os(iOS)
                 await MainActor.run {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
-                print("📱 Registering for remote notifications...")
                 #endif
             } else {
-                print("❌ Notification permission denied")
             }
             
             showNotificationPermissionPrompt = false
         } catch {
-            print("❌ Error requesting notification permission: \(error)")
             showNotificationPermissionPrompt = false
         }
     }
@@ -194,11 +304,9 @@ class AppState: ObservableObject {
     
     /// 🔥 FIX: Handle FCM token updates with proper auth coordination
     private func handleFCMToken(_ token: String) async {
-        print("🔑 [AppState] FCM token received: \(token.prefix(20))...")
         
         // Check if we have an authenticated user
         guard let userId = currentUser?.id else {
-            print("⏳ [AppState] No authenticated user yet, storing token as pending")
             pendingFCMToken = token
             return
         }
@@ -211,9 +319,7 @@ class AppState: ObservableObject {
     private func saveFCMToken(_ token: String, for userId: String) async {
         do {
             try await notificationService.updateFCMToken(userId: userId, token: token)
-            print("✅ [AppState] FCM token saved successfully for user: \(userId)")
         } catch {
-            print("❌ [AppState] Failed to save FCM token: \(error)")
             // Keep as pending to retry later
             pendingFCMToken = token
         }

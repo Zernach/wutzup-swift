@@ -194,9 +194,6 @@ struct NewGroupView: View {
         let name = trimmedGroupName
         let users = selectedUsers
         
-        print("🔍 Creating group with \(users.count) selected users")
-        print("🔍 Selected user IDs: \(users.map { $0.id })")
-        
         Task { @MainActor in
             let conversation = await chatListViewModel.createGroupConversation(
                 with: users,
@@ -304,6 +301,10 @@ private final class PreviewUserService: UserService {
     }
     
     func updatePersonality(userId: String, personality: String?) async throws {
+        // No-op for preview
+    }
+    
+    func updateProfileImageUrl(userId: String, imageUrl: String?) async throws {
         // No-op for preview
     }
 }

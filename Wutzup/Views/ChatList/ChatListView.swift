@@ -18,6 +18,8 @@ struct ChatListView: View {
     }
 
     var body: some View {
+        
+        return
         NavigationStack(path: $navigationPath) {
             ZStack {
                 AppConstants.Colors.background
@@ -317,6 +319,7 @@ private final class PreviewAuthenticationService: AuthenticationService {
 private final class PreviewPresenceServiceForChat: PresenceService {
     func setOnline(userId: String) async throws { }
     func setOffline(userId: String) async throws { }
+    func setAway(userId: String) async throws { }
     
     func observePresence(userId: String) -> AsyncStream<Presence> {
         AsyncStream { continuation in

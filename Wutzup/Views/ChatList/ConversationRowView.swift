@@ -324,6 +324,7 @@ private class PreviewPresenceService: PresenceService {
     
     func setOnline(userId: String) async throws { }
     func setOffline(userId: String) async throws { }
+    func setAway(userId: String) async throws { }
     
     func observePresence(userId: String) -> AsyncStream<Presence> {
         AsyncStream { continuation in

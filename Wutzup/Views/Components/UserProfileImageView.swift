@@ -43,20 +43,13 @@ struct UserProfileImageView: View {
             Group {
                 if let profileImageUrl = user?.profileImageUrl,
                    let url = URL(string: profileImageUrl) {
-                    // TODO: Use Kingfisher or AsyncImage for remote images
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            placeholderImage
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        case .failure:
-                            placeholderImage
-                        @unknown default:
-                            placeholderImage
-                        }
+                    // Use cached async image for better performance
+                    CachedAsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    } placeholder: {
+                        placeholderImage
                     }
                 } else {
                     placeholderImage
@@ -262,6 +255,7 @@ private class PreviewPresenceService: PresenceService {
     
     func setOnline(userId: String) async throws { }
     func setOffline(userId: String) async throws { }
+    func setAway(userId: String) async throws { }
     
     func observePresence(userId: String) -> AsyncStream<Presence> {
         AsyncStream { continuation in

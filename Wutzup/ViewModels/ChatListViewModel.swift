@@ -23,6 +23,14 @@ class ChatListViewModel: ObservableObject {
     private var observationTask: Task<Void, Never>?
     private var typingObservationTasks: [String: Task<Void, Never>] = [:] // conversationId -> Task
     
+    // Lifecycle state
+    private var isObserving = false
+    private var isPaused = false
+    private var hasReceivedInitialData = false
+    private var initialLoadDebounceTask: Task<Void, Never>?
+    private var initialConversationCount = 0
+    private var initialLoadBuffer: [Conversation] = [] // Buffer conversations during initial load
+    
     // Cache for user data (for showing online status in conversation rows)
     private var userCache: [String: User] = [:]
 
@@ -52,18 +60,85 @@ class ChatListViewModel: ObservableObject {
 
     func startObserving() {
         guard let userId = authService.currentUser?.id else {
-            print("⚠️ [ChatListViewModel] Cannot start observing - no user ID")
             return
         }
 
-        print("🔥 [ChatListViewModel] Starting conversation observation for user: \(userId)")
+        
+        // Set loading state if we haven't received initial data yet
+        if !hasReceivedInitialData {
+            isLoading = true
+            initialConversationCount = 0
+            initialLoadBuffer = []
+            
+            // Safety timeout: if no conversations arrive within 3 seconds, stop loading
+            // (handles case where user has no conversations)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                if !hasReceivedInitialData && isLoading {
+                    hasReceivedInitialData = true
+                    isLoading = false
+                    
+                    // Flush buffer to conversations array
+                    if !initialLoadBuffer.isEmpty {
+                        conversations = initialLoadBuffer
+                        initialLoadBuffer = []
+                    }
+                    
+                    await fetchAndCacheParticipants()
+                }
+            }
+        }
+        
+        isObserving = true
+        isPaused = false
         observationTask?.cancel()
         observationTask = Task { @MainActor in
             for await conversation in chatService.observeConversations(userId: userId) {
-                print("🔥 [ChatListViewModel] Received conversation update: \(conversation.id)")
-                print("🔥 [ChatListViewModel]   lastMessage: \(conversation.lastMessage ?? "nil")")
-                print("🔥 [ChatListViewModel]   lastMessageTimestamp: \(conversation.lastMessageTimestamp?.description ?? "nil")")
-                upsertConversation(conversation)
+                
+                // If we're still in initial load, buffer conversations instead of updating UI
+                if !hasReceivedInitialData {
+                    initialConversationCount += 1
+                    
+                    // Add to buffer instead of conversations array (prevents UI updates)
+                    if let index = initialLoadBuffer.firstIndex(where: { $0.id == conversation.id }) {
+                        initialLoadBuffer[index] = conversation
+                    } else {
+                        initialLoadBuffer.append(conversation)
+                    }
+                    
+                    // Sort buffer
+                    initialLoadBuffer.sort { ($0.lastMessageTimestamp ?? $0.updatedAt) > ($1.lastMessageTimestamp ?? $1.updatedAt) }
+                    
+                    // Cancel previous debounce task
+                    initialLoadDebounceTask?.cancel()
+                    
+                    // Start new debounce task - wait 1 second after last conversation
+                    // to ensure all initial conversations have loaded
+                    initialLoadDebounceTask = Task { @MainActor in
+                        do {
+                            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                            
+                            // If we get here without cancellation, initial load is complete
+                            if !hasReceivedInitialData {
+                                
+                                // Flush buffer to conversations array (single UI update)
+                                conversations = initialLoadBuffer
+                                initialLoadBuffer = []
+                                
+                                hasReceivedInitialData = true
+                                isLoading = false
+                                
+                                // Now fetch and cache all participant data
+                                await fetchAndCacheParticipants()
+                            }
+                        } catch {
+                            // Task was cancelled, another conversation arrived
+                        }
+                    }
+                } else {
+                    // After initial load, update conversations normally (live updates)
+                    upsertConversation(conversation)
+                }
                 
                 // Start observing typing for this conversation if not already observing
                 startObservingTyping(for: conversation.id)
@@ -72,9 +147,15 @@ class ChatListViewModel: ObservableObject {
     }
 
     func stopObserving() {
-        print("🔥 [ChatListViewModel] Stopping all observations")
+        isObserving = false
+        isPaused = false
+        hasReceivedInitialData = false
+        initialConversationCount = 0
+        initialLoadBuffer = []
         observationTask?.cancel()
         observationTask = nil
+        initialLoadDebounceTask?.cancel()
+        initialLoadDebounceTask = nil
         
         // Stop all typing observations
         for task in typingObservationTasks.values {
@@ -84,16 +165,47 @@ class ChatListViewModel: ObservableObject {
         typingStatus.removeAll()
     }
     
+    /// Pause listeners for battery efficiency (called when app goes to background)
+    func pauseListeners() {
+        guard isObserving && !isPaused else {
+            return
+        }
+        
+        isPaused = true
+        
+        // Cancel observation tasks but keep state to resume later
+        observationTask?.cancel()
+        observationTask = nil
+        
+        // Pause typing observations
+        for task in typingObservationTasks.values {
+            task.cancel()
+        }
+        typingObservationTasks.removeAll()
+        
+    }
+    
+    /// Resume listeners after returning to foreground
+    func resumeListeners() {
+        guard isPaused else {
+            return
+        }
+        
+        isPaused = false
+        
+        // Restart observations
+        startObserving()
+        
+    }
+    
     private func startObservingTyping(for conversationId: String) {
         // Don't start if already observing
         guard typingObservationTasks[conversationId] == nil else { return }
         guard let presenceService = presenceService else { return }
         
-        print("👀 [ChatListViewModel] Starting typing observation for conversation: \(conversationId)")
         
         let task = Task { @MainActor in
             for await typingUsers in presenceService.observeTyping(conversationId: conversationId) {
-                print("👀 [ChatListViewModel] Typing update for \(conversationId): \(typingUsers)")
                 typingStatus[conversationId] = typingUsers
             }
         }
@@ -128,6 +240,9 @@ class ChatListViewModel: ObservableObject {
         do {
             conversations = try await chatService.fetchConversations(userId: userId)
             
+            // Mark that we've received initial data
+            hasReceivedInitialData = true
+            
             // Fetch and cache user data for all participants
             await fetchAndCacheParticipants()
             
@@ -161,30 +276,35 @@ class ChatListViewModel: ObservableObject {
             let allUsers = try await userService.fetchAllUsers()
             
             // Cache users that are participants
+            var cachedUsers: [User] = []
             for user in allUsers where participantIds.contains(user.id) {
                 cacheUser(user)
+                cachedUsers.append(user)
+            }
+            
+            // Preload profile images for better performance
+            let imageUrls = cachedUsers.compactMap { user -> URL? in
+                guard let urlString = user.profileImageUrl else { return nil }
+                return URL(string: urlString)
+            }
+            
+            if !imageUrls.isEmpty {
+                await ImageCache.shared.preloadImages(urls: imageUrls)
             }
         } catch {
-            print("⚠️ Failed to fetch participant user data: \(error)")
         }
     }
 
     func upsertConversation(_ conversation: Conversation) {
         if let index = conversations.firstIndex(where: { $0.id == conversation.id }) {
-            print("🔄 [ChatListViewModel] Updating existing conversation at index \(index)")
             conversations[index] = conversation
         } else {
-            print("➕ [ChatListViewModel] Adding new conversation")
             conversations.append(conversation)
         }
 
         // Sort by most recent message
         conversations.sort { ($0.lastMessageTimestamp ?? $0.updatedAt) > ($1.lastMessageTimestamp ?? $1.updatedAt) }
         
-        print("📋 [ChatListViewModel] Conversations list updated, count: \(conversations.count)")
-        
-        // Force UI refresh by triggering objectWillChange
-        objectWillChange.send()
     }
 
     func createDirectConversation(with otherUserId: String, otherDisplayName: String, otherEmail: String, currentUser: User?) async -> Conversation? {
@@ -284,7 +404,6 @@ class ChatListViewModel: ObservableObject {
             return nil
         }
         
-        print("🔍 Creating group with \(participantIds.count) participants: \(participantIds)")
         
         do {
             return try await chatService.createConversation(

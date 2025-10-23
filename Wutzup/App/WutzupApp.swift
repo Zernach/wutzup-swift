@@ -74,8 +74,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        
+        // Check if launched from notification
+        if let notification = launchOptions?[.remoteNotification] as? [String: Any] {
+            handleNotificationPayload(notification)
+        }
+        
         // Register for remote notifications
         application.registerForRemoteNotifications()
+        
         return true
     }
     
@@ -83,14 +90,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        print("✅ APNs Device Token registered")
         
         // Pass token to notification service
         Task {
             do {
                 try await appState?.notificationService.registerDeviceToken(deviceToken)
             } catch {
-                print("❌ Error registering device token: \(error)")
             }
         }
     }
@@ -99,6 +104,29 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        print("❌ Failed to register for remote notifications: \(error)")
+    }
+    
+    // Handle remote notification when app is running
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        
+        handleNotificationPayload(userInfo)
+        
+        // Tell system we successfully fetched new data
+        completionHandler(.newData)
+    }
+    
+    private func handleNotificationPayload(_ userInfo: [AnyHashable: Any]) {
+        // Extract conversation ID from notification
+        if let conversationId = userInfo["conversationId"] as? String {
+            
+            // Navigate to conversation when app becomes active
+            Task { @MainActor in
+                appState?.handleNotificationTap(conversationId: conversationId)
+            }
+        }
     }
 }

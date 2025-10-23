@@ -34,8 +34,6 @@ final class DraftManager {
         userDefaults.set(drafts, forKey: draftsKey)
         
         #if DEBUG
-        print("📝 [DraftManager] Saved draft for conversation: \(conversationId)")
-        print("📝 [DraftManager]   Text: \(text.isEmpty ? "(empty - removed)" : "'\(text)'")")
         #endif
     }
     
@@ -48,8 +46,6 @@ final class DraftManager {
         
         #if DEBUG
         if let draft = draft {
-            print("📝 [DraftManager] Loaded draft for conversation: \(conversationId)")
-            print("📝 [DraftManager]   Text: '\(draft)'")
         }
         #endif
         
@@ -64,7 +60,6 @@ final class DraftManager {
         userDefaults.set(drafts, forKey: draftsKey)
         
         #if DEBUG
-        print("📝 [DraftManager] Removed draft for conversation: \(conversationId)")
         #endif
     }
     
@@ -73,7 +68,6 @@ final class DraftManager {
         userDefaults.removeObject(forKey: draftsKey)
         
         #if DEBUG
-        print("📝 [DraftManager] Removed all drafts")
         #endif
     }
     

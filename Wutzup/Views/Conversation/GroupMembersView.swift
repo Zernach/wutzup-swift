@@ -105,7 +105,6 @@ struct GroupMembersView: View {
         } catch {
             errorMessage = "Failed to load members: \(error.localizedDescription)"
             isLoading = false
-            print("❌ [GroupMembersView] Failed to load members: \(error)")
         }
     }
 }
@@ -163,12 +162,16 @@ private final class PreviewUserService: UserService {
     }
     
     func updatePersonality(userId: String, personality: String?) async throws { }
+    
+    func updateProfileImageUrl(userId: String, imageUrl: String?) async throws { }
 }
 
 private final class PreviewPresenceService: PresenceService {
     func setOnline(userId: String) async throws { }
     
     func setOffline(userId: String) async throws { }
+    
+    func setAway(userId: String) async throws { }
     
     func observePresence(userId: String) -> AsyncStream<Presence> {
         AsyncStream { continuation in

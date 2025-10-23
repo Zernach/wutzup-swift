@@ -62,28 +62,15 @@ class FirebaseChatService: ChatService {
         )
         
         // Debug: Print conversation data before sending to Firestore
-        print("🔍 Creating conversation with ID: \(conversation.id)")
-        print("🔍 Participant IDs: \(conversation.participantIds)")
-        print("🔍 Participant Names: \(conversation.participantNames)")
-        print("🔍 Is Group: \(conversation.isGroup)")
-        print("🔍 Firestore Data Keys: \(await conversation.firestoreData.keys.sorted())")
-        print("🔍 Current User ID: \(currentUserId)")
-        print("🔍 Current user in participants: \(conversation.participantIds.contains(currentUserId))")
         
         do {
             try await db.collection("conversations")
                 .document(conversation.id)
                 .setData(conversation.firestoreData)
             
-            print("✅ Successfully created conversation: \(conversation.id)")
             return conversation
         } catch {
-            print("❌ Failed to create conversation: \(error)")
-            print("❌ Error details: \(error.localizedDescription)")
             if let nsError = error as NSError? {
-                print("❌ Error domain: \(nsError.domain)")
-                print("❌ Error code: \(nsError.code)")
-                print("❌ Error userInfo: \(nsError.userInfo)")
             }
             throw error
         }
@@ -99,7 +86,6 @@ class FirebaseChatService: ChatService {
     }
     
     nonisolated func observeConversations(userId: String) -> AsyncStream<Conversation> {
-        print("🔥 [FirebaseChatService] Setting up conversation observer for user: \(userId)")
         
         return AsyncStream { continuation in
             let listener = db.collection("conversations")
@@ -107,40 +93,30 @@ class FirebaseChatService: ChatService {
                 .order(by: "updatedAt", descending: true)
                 .addSnapshotListener { snapshot, error in
                     if let error = error {
-                        print("❌ [FirebaseChatService] Error observing conversations: \(error.localizedDescription)")
                         return
                     }
                     
                     guard let snapshot = snapshot else {
-                        print("❌ [FirebaseChatService] Snapshot is nil")
                         return
                     }
                     
-                    print("🔥 [FirebaseChatService] Received snapshot with \(snapshot.documentChanges.count) changes")
                     
                     for change in snapshot.documentChanges {
                         let changeType = change.type == .added ? "added" : (change.type == .modified ? "modified" : "removed")
-                        print("🔥 [FirebaseChatService] Change type: \(changeType), doc: \(change.document.documentID)")
                         
                         switch change.type {
                         case .added, .modified:
                             if let conversation = Conversation(from: change.document) {
-                                print("✅ [FirebaseChatService] Yielding conversation: \(conversation.id)")
-                                print("   lastMessage: \(conversation.lastMessage ?? "nil")")
-                                print("   lastMessageTimestamp: \(conversation.lastMessageTimestamp?.description ?? "nil")")
                                 continuation.yield(conversation)
                             } else {
-                                print("⚠️ [FirebaseChatService] Failed to parse conversation from document: \(change.document.documentID)")
                             }
                         case .removed:
-                            print("🗑️ [FirebaseChatService] Conversation removed: \(change.document.documentID)")
                             break
                         }
                     }
                 }
             
             continuation.onTermination = { _ in
-                print("🔥 [FirebaseChatService] Listener terminated for user: \(userId)")
                 listener.remove()
             }
         }

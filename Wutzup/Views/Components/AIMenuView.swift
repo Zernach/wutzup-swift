@@ -21,11 +21,11 @@ struct AIMenuView: View {
             if isExpanded {
                 // Menu Items
                 VStack(spacing: 0) {
-                    // Concise Replies (CoreML)
+                    // Concise Reply (CoreML)
                     menuItem(
                         icon: "sparkles",
                         iconColor: AppConstants.Colors.brightGreen,
-                        title: "Concise Replies",
+                        title: "Concise Reply",
                         subtitle: "Fast, on-device",
                         isLoading: isGeneratingCoreML,
                         action: {
@@ -39,11 +39,11 @@ struct AIMenuView: View {
                     Divider()
                         .background(AppConstants.Colors.border)
                     
-                    // Thoughtful Replies (OpenAI)
+                    // Thoughtful Reply (OpenAI)
                     menuItem(
                         icon: "sparkles",
                         iconColor: AppConstants.Colors.accent,
-                        title: "Thoughtful Replies",
+                        title: "Thoughtful Reply",
                         subtitle: "Detailed, contextual",
                         isLoading: isGeneratingAI,
                         action: {
@@ -60,7 +60,7 @@ struct AIMenuView: View {
                     // Conduct Research
                     menuItem(
                         icon: "magnifyingglass",
-                        iconColor: AppConstants.Colors.accent,
+                        iconColor: AppConstants.Colors.purple,
                         title: "Conduct Research",
                         subtitle: "Web search & analysis",
                         isLoading: false,
@@ -78,7 +78,7 @@ struct AIMenuView: View {
                     // Generate GIF
                     menuItem(
                         icon: "photo.stack",
-                        iconColor: AppConstants.Colors.accent,
+                        iconColor: AppConstants.Colors.brightYellow,
                         title: "Generate GIF",
                         subtitle: "Create animated image",
                         isLoading: false,

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UserNotifications
+import PhotosUI
 
 struct AccountView: View {
     @EnvironmentObject var appState: AppState
@@ -23,6 +24,10 @@ struct AccountView: View {
     @State private var personalityText: String = ""
     @State private var isSavingPersonality = false
     @State private var showingPersonalitySaved = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var isUploadingImage = false
+    @State private var uploadError: String?
+    @State private var showingUploadError = false
     
     var presenceService: PresenceService? = nil
     
@@ -35,13 +40,29 @@ struct AccountView: View {
                 VStack(spacing: 0) {
                     // User Info Section
                     VStack(spacing: 16) {
-                        // Profile Avatar with online status
-                        UserProfileImageView(
-                            user: appState.currentUser,
-                            size: 100,
-                            showOnlineStatus: true,
-                            presenceService: presenceService
-                        )
+                        // Profile Avatar with online status - tap to change
+                        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                            UserProfileImageView(
+                                user: appState.currentUser,
+                                size: 100,
+                                showOnlineStatus: true,
+                                presenceService: presenceService
+                            )
+                            .overlay(
+                                Group {
+                                    if isUploadingImage {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.black.opacity(0.6))
+                                            
+                                            ProgressView()
+                                                .tint(.white)
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        .disabled(isUploadingImage)
                         
                         // Display Name
                         Text(appState.currentUser?.displayName ?? "User")
@@ -324,6 +345,11 @@ struct AccountView: View {
             await checkNotificationStatus()
             loadPersonality()
         }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            Task {
+                await handlePhotoSelection(newItem)
+            }
+        }
         .confirmationDialog(
             "Delete Account",
             isPresented: $showingDeleteConfirmation,
@@ -340,6 +366,11 @@ struct AccountView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(deleteErrorMessage)
+        }
+        .alert("Upload Error", isPresented: $showingUploadError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(uploadError ?? "Failed to upload image")
         }
         .toolbarBackground(AppConstants.Colors.background, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -406,7 +437,6 @@ struct AccountView: View {
                 self.isLoadingToken = false
             }
         } catch {
-            print("❌ Error loading FCM token: \(error)")
             await MainActor.run {
                 self.isLoadingToken = false
             }
@@ -514,8 +544,69 @@ struct AccountView: View {
                 showingPersonalitySaved = false
                 
             } catch {
-                print("❌ Error saving personality: \(error)")
                 isSavingPersonality = false
+            }
+        }
+    }
+    
+    private func handlePhotoSelection(_ item: PhotosPickerItem?) async {
+        guard let item = item else { return }
+        guard let userId = appState.currentUser?.id else { return }
+        
+        await MainActor.run {
+            isUploadingImage = true
+        }
+        
+        do {
+            // Load image data from PhotosPicker
+            guard let imageData = try await item.loadTransferable(type: Data.self) else {
+                throw NSError(
+                    domain: "AccountView",
+                    code: 400,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to load image data"]
+                )
+            }
+            
+            // Convert to UIImage
+            guard let uiImage = UIImage(data: imageData) else {
+                throw NSError(
+                    domain: "AccountView",
+                    code: 400,
+                    userInfo: [NSLocalizedDescriptionKey: "Invalid image format"]
+                )
+            }
+            
+            // Upload to Firebase Storage
+            guard let userService = appState.userService as? FirebaseUserService else {
+                throw NSError(
+                    domain: "AccountView",
+                    code: 500,
+                    userInfo: [NSLocalizedDescriptionKey: "User service not available"]
+                )
+            }
+            
+            let imageUrl = try await userService.uploadProfileImage(userId: userId, image: uiImage)
+            
+            // Update Firestore with new image URL
+            try await appState.userService.updateProfileImageUrl(userId: userId, imageUrl: imageUrl)
+            
+            // Update current user in app state
+            await MainActor.run {
+                if var updatedUser = appState.currentUser {
+                    updatedUser.profileImageUrl = imageUrl
+                    appState.currentUser = updatedUser
+                }
+                
+                isUploadingImage = false
+                selectedPhotoItem = nil
+            }
+            
+        } catch {
+            await MainActor.run {
+                uploadError = error.localizedDescription
+                showingUploadError = true
+                isUploadingImage = false
+                selectedPhotoItem = nil
             }
         }
     }

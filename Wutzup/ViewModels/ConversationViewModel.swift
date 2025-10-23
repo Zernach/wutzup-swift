@@ -23,6 +23,8 @@ class ConversationViewModel: ObservableObject {
     @Published var showingAISuggestion = false
     @Published var showingGIFGenerator = false
     @Published var isGeneratingGIF = false
+    @Published var generatedGIFURL: String?
+    @Published var generatedGIFPrompt: String?
     @Published var isGeneratingCoreMLAI = false
     @Published var showingResearch = false
     @Published var isConductingResearch = false
@@ -36,6 +38,8 @@ class ConversationViewModel: ObservableObject {
     private let coreMLAIService: AIService
     private let gifService: GIFService
     private let researchService: ResearchService
+    private let networkMonitor = NetworkMonitor.shared
+    private let offlineQueue = OfflineMessageQueue.shared
     
     // Expose presenceService for use by child views
     var presenceService: PresenceService {
@@ -46,6 +50,13 @@ class ConversationViewModel: ObservableObject {
     private var typingObservationTask: Task<Void, Never>?
     private var typingTimer: Timer?
     private var readReceiptDebounceTask: Task<Void, Never>?
+    private var networkObserver: Any?
+    private var autoSyncTask: Task<Void, Never>?
+    
+    // Lifecycle state
+    private var isObserving = false
+    private var isPaused = false
+    private var lastSyncTimestamp: Date?
     
     init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), coreMLAIService: AIService = CoreMLAIService(), gifService: GIFService = FirebaseGIFService(), researchService: ResearchService = FirebaseResearchService(), draftManager: DraftManager = .shared) {
         self.conversation = conversation
@@ -57,13 +68,57 @@ class ConversationViewModel: ObservableObject {
         self.gifService = gifService
         self.researchService = researchService
         self.draftManager = draftManager
+        
+        // Setup network reconnection observer
+        setupNetworkObserver()
+    }
+    
+    deinit {
+        if let observer = networkObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        autoSyncTask?.cancel()
+    }
+    
+    // MARK: - Network Monitoring
+    
+    private func setupNetworkObserver() {
+        networkObserver = NotificationCenter.default.addObserver(
+            forName: .networkDidReconnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                
+                // Get downtime from notification
+                let downtime = notification.userInfo?["downtime"] as? TimeInterval ?? 0
+                
+                // Sync offline queue
+                await self.syncOfflineMessages()
+                
+                // Re-fetch messages if we were offline for more than 30 seconds
+                if downtime > 30 {
+                    await self.fetchMessages()
+                }
+            }
+        }
+    }
+    
+    /// Sync all pending offline messages
+    func syncOfflineMessages() async {
+        guard networkMonitor.isConnected else {
+            return
+        }
+        
+        await offlineQueue.syncPendingMessages(messageService: messageService)
     }
     
     /// Load any saved draft message for this conversation
     func loadDraft() {
         if let draft = draftManager.loadDraft(for: conversation.id) {
             messageText = draft
-            print("📝 [ConversationViewModel] Loaded draft: '\(draft)'")
         }
     }
     
@@ -107,7 +162,6 @@ class ConversationViewModel: ObservableObject {
         
         guard !unreadVisibleMessages.isEmpty else { return }
         
-        print("👁️ [ConversationViewModel] Marking \(unreadVisibleMessages.count) visible messages as read")
         
         // Use batch operation for efficiency
         let messageIds = unreadVisibleMessages.map { $0.id }
@@ -118,7 +172,6 @@ class ConversationViewModel: ObservableObject {
                 userId: currentUserId
             )
         } catch {
-            print("❌ [ConversationViewModel] Failed to batch mark as read: \(error)")
         }
     }
     
@@ -135,7 +188,6 @@ class ConversationViewModel: ObservableObject {
         
         guard !undeliveredMessages.isEmpty else { return }
         
-        print("📬 [ConversationViewModel] Marking \(undeliveredMessages.count) messages as delivered")
         
         // Use batch operation for efficiency
         let messageIds = undeliveredMessages.map { $0.id }
@@ -146,22 +198,17 @@ class ConversationViewModel: ObservableObject {
                 userId: currentUserId
             )
         } catch {
-            print("❌ [ConversationViewModel] Failed to batch mark as delivered: \(error)")
         }
     }
     
     func startObserving() {
-        print("🟢 [ConversationViewModel] startObserving() - ENTRY")
+        isObserving = true
+        isPaused = false
         
         // Observe messages
         messageObservationTask?.cancel()
         messageObservationTask = Task {
-            print("🟢 [ConversationViewModel] Starting message observation Task")
             for await message in messageService.observeMessages(conversationId: conversation.id) {
-                print("🟢 [ConversationViewModel] Received message from listener:")
-                print("🟢 [ConversationViewModel]   messageId: \(message.id)")
-                print("🟢 [ConversationViewModel]   content: '\(message.content)'")
-                print("🟢 [ConversationViewModel]   status: \(message.status)")
                 
                 // Calculate status based on readBy/deliveredTo arrays
                 var updatedMessage = message
@@ -172,33 +219,26 @@ class ConversationViewModel: ObservableObject {
                     
                     if otherParticipants.allSatisfy({ message.readBy.contains($0) }) {
                         updatedMessage.status = .read
-                        print("🟢 [ConversationViewModel]   Calculated status: .read (all read)")
                     } else if otherParticipants.allSatisfy({ message.deliveredTo.contains($0) }) {
                         updatedMessage.status = .delivered
-                        print("🟢 [ConversationViewModel]   Calculated status: .delivered (all delivered)")
                     } else if !message.deliveredTo.isEmpty || !message.readBy.isEmpty {
                         updatedMessage.status = .sent
-                        print("🟢 [ConversationViewModel]   Calculated status: .sent")
                     }
                 }
                 
                 // Update or add message
                 if let index = messages.firstIndex(where: { $0.id == message.id }) {
-                    print("🟢 [ConversationViewModel]   Updating existing message at index \(index)")
                     messages[index] = updatedMessage
                 } else {
-                    print("🟢 [ConversationViewModel]   Adding new message to array")
                     messages.append(updatedMessage)
                 }
                 
                 // Sort by timestamp
                 messages.sort { $0.timestamp < $1.timestamp }
-                print("🟢 [ConversationViewModel]   Total messages: \(messages.count)")
                 
                 // Auto-mark received messages as delivered (NOT read - that happens via visibility)
                 if !message.isFromCurrentUser, let userId = authService.currentUser?.id {
                     if !message.deliveredTo.contains(userId) {
-                        print("🟢 [ConversationViewModel]   Auto-marking new message as delivered")
                         Task {
                             try? await messageService.markAsDelivered(
                                 conversationId: conversation.id,
@@ -210,7 +250,6 @@ class ConversationViewModel: ObservableObject {
                     // Read marking now handled by visibility tracking
                 }
             }
-            print("🟢 [ConversationViewModel] Message observation Task ended")
         }
         
         // Observe typing indicators
@@ -223,6 +262,8 @@ class ConversationViewModel: ObservableObject {
     }
     
     func stopObserving() {
+        isObserving = false
+        isPaused = false
         messageObservationTask?.cancel()
         messageObservationTask = nil
         typingObservationTask?.cancel()
@@ -241,6 +282,85 @@ class ConversationViewModel: ObservableObject {
                 )
             }
         }
+    }
+    
+    /// Pause listeners for battery efficiency (called when app goes to background)
+    func pauseListeners() {
+        guard isObserving && !isPaused else {
+            return
+        }
+        
+        isPaused = true
+        lastSyncTimestamp = Date()
+        
+        // Cancel observation tasks but keep state to resume later
+        messageObservationTask?.cancel()
+        messageObservationTask = nil
+        typingObservationTask?.cancel()
+        typingObservationTask = nil
+        
+        // Save draft
+        saveDraft()
+        
+    }
+    
+    /// Resume listeners after returning to foreground
+    func resumeListeners() async {
+        guard isPaused else {
+            return
+        }
+        
+        isPaused = false
+        
+        // Sync missed messages if needed
+        await syncMissedMessages()
+        
+        // Restart observations
+        startObserving()
+        
+    }
+    
+    /// Sync messages that arrived while app was in background
+    func syncMissedMessages() async {
+        guard let lastSync = lastSyncTimestamp else {
+            return
+        }
+        
+        let timeSinceSync = Date().timeIntervalSince(lastSync)
+        
+        // Only sync if we've been away for more than 10 seconds
+        guard timeSinceSync > 10 else {
+            return
+        }
+        
+        
+        do {
+            // Fetch recent messages
+            let recentMessages = try await messageService.fetchMessages(
+                conversationId: conversation.id,
+                limit: 50 // Fetch more to ensure we get everything
+            )
+            
+            // Merge with existing messages (avoiding duplicates)
+            var updatedMessages = messages
+            for newMessage in recentMessages {
+                if !updatedMessages.contains(where: { $0.id == newMessage.id }) {
+                    updatedMessages.append(newMessage)
+                }
+            }
+            
+            // Sort by timestamp
+            updatedMessages.sort { $0.timestamp < $1.timestamp }
+            messages = updatedMessages
+            
+            // Mark undelivered messages as delivered
+            await markUndeliveredMessagesAsDelivered()
+            
+            
+        } catch {
+        }
+        
+        lastSyncTimestamp = Date()
     }
     
     func fetchMessages() async {
@@ -264,17 +384,12 @@ class ConversationViewModel: ObservableObject {
     }
     
     func sendMessage(content: String) async {
-        print("🟢 [ConversationViewModel] sendMessage() - ENTRY")
-        print("🟢 [ConversationViewModel] content: '\(content)'")
-        print("🟢 [ConversationViewModel] conversationId: \(conversation.id)")
         
         guard let currentUser = authService.currentUser else {
-            print("❌ [ConversationViewModel] No current user")
             errorMessage = "User not authenticated"
             return
         }
         
-        print("🟢 [ConversationViewModel] Setting isSending = true")
         isSending = true
         
         // Create optimistic message immediately with .sending status
@@ -288,28 +403,37 @@ class ConversationViewModel: ObservableObject {
             isFromCurrentUser: true
         )
         
-        print("🟢 [ConversationViewModel] Adding optimistic message to UI")
-        print("🟢 [ConversationViewModel]   messageId: \(optimisticMessage.id)")
-        print("🟢 [ConversationViewModel]   status: .sending")
         
         // Add to UI immediately (optimistic update)
         messages.append(optimisticMessage)
         messages.sort { $0.timestamp < $1.timestamp }
         
         // Remove draft since we're sending
-        print("📝 [ConversationViewModel] Removing draft after sending message")
         draftManager.removeDraft(for: conversation.id)
         
         // Stop typing indicator
-        print("🟢 [ConversationViewModel] Stopping typing indicator for user: \(currentUser.id)")
         try? await _presenceService.setTyping(
             userId: currentUser.id,
             conversationId: conversation.id,
             isTyping: false
         )
         
+        // Check if we're offline - if so, queue the message
+        if !networkMonitor.isConnected {
+            offlineQueue.enqueue(optimisticMessage)
+            
+            // Update message status to indicate it's queued
+            if let index = messages.firstIndex(where: { $0.id == optimisticMessage.id }) {
+                var queuedMessage = messages[index]
+                queuedMessage.status = .sending // Keep showing sending status
+                messages[index] = queuedMessage
+            }
+            
+            isSending = false
+            return
+        }
+        
         // Send to server in background (pass the optimistic message ID)
-        print("🟢 [ConversationViewModel] Calling messageService.sendMessage()")
         do {
             let serverMessage = try await messageService.sendMessage(
                 conversationId: conversation.id,
@@ -319,38 +443,43 @@ class ConversationViewModel: ObservableObject {
                 messageId: optimisticMessage.id  // Use same ID as optimistic message
             )
             
-            print("✅ [ConversationViewModel] Message sent successfully!")
-            print("✅ [ConversationViewModel]   messageId: \(serverMessage.id)")
-            print("✅ [ConversationViewModel]   status: \(serverMessage.status)")
             
             // Update optimistic message with server response
             if let index = messages.firstIndex(where: { $0.id == optimisticMessage.id }) {
-                print("🟢 [ConversationViewModel] Updating optimistic message with server data")
                 messages[index] = serverMessage
             }
             // Note: The Firestore listener will also pick up this message and may add it again,
             // but the duplicate check in startObserving() will handle that
             
         } catch {
-            print("❌ [ConversationViewModel] ERROR sending message: \(error)")
-            print("❌ [ConversationViewModel] Error type: \(type(of: error))")
-            print("❌ [ConversationViewModel] Error description: \(error.localizedDescription)")
             
-            // Update optimistic message to failed status
-            if let index = messages.firstIndex(where: { $0.id == optimisticMessage.id }) {
-                print("🟢 [ConversationViewModel] Updating message status to .failed")
-                var failedMessage = messages[index]
-                failedMessage.status = .failed
-                messages[index] = failedMessage
+            // Check if error is network-related
+            let isNetworkError = (error as NSError).domain == NSURLErrorDomain ||
+                                 !networkMonitor.isConnected
+            
+            if isNetworkError {
+                offlineQueue.enqueue(optimisticMessage)
+                
+                // Keep showing sending status (will sync when online)
+                if let index = messages.firstIndex(where: { $0.id == optimisticMessage.id }) {
+                    var queuedMessage = messages[index]
+                    queuedMessage.status = .sending
+                    messages[index] = queuedMessage
+                }
+            } else {
+                // Non-network error - mark as failed
+                if let index = messages.firstIndex(where: { $0.id == optimisticMessage.id }) {
+                    var failedMessage = messages[index]
+                    failedMessage.status = .failed
+                    messages[index] = failedMessage
+                }
+                
+                errorMessage = error.localizedDescription
+                messageText = content // Restore text on error
             }
-            
-            errorMessage = error.localizedDescription
-            messageText = content // Restore text on error
         }
         
-        print("🟢 [ConversationViewModel] Setting isSending = false")
         isSending = false
-        print("🟢 [ConversationViewModel] sendMessage() - EXIT")
     }
     
     func onTypingChanged() {
@@ -403,8 +532,6 @@ class ConversationViewModel: ObservableObject {
     }
     
     func retryMessage(_ message: Message) async {
-        print("🟢 [ConversationViewModel] retryMessage() - ENTRY")
-        print("🟢 [ConversationViewModel] messageId: \(message.id)")
         
         // Update status to sending
         if let index = messages.firstIndex(where: { $0.id == message.id }) {
@@ -423,7 +550,6 @@ class ConversationViewModel: ObservableObject {
                 messageId: message.id  // Use same ID
             )
             
-            print("✅ [ConversationViewModel] Message retry successful!")
             
             // Update with server response
             if let index = messages.firstIndex(where: { $0.id == message.id }) {
@@ -431,7 +557,6 @@ class ConversationViewModel: ObservableObject {
             }
             
         } catch {
-            print("❌ [ConversationViewModel] Message retry failed: \(error)")
             
             // Update back to failed status
             if let index = messages.firstIndex(where: { $0.id == message.id }) {
@@ -448,7 +573,6 @@ class ConversationViewModel: ObservableObject {
     
     func generateAIResponseSuggestions() async {
         guard !messages.isEmpty else {
-            print("❌ No messages to generate suggestions from")
             return
         }
         
@@ -457,24 +581,17 @@ class ConversationViewModel: ObservableObject {
         do {
             let userPersonality = authService.currentUser?.personality
             
-            print("🤖 Generating AI suggestions...")
-            print("   Conversation history: \(messages.count) messages")
-            print("   User personality: \(userPersonality ?? "none")")
             
             let suggestion = try await aiService.generateResponseSuggestions(
                 conversationHistory: messages,
                 userPersonality: userPersonality
             )
             
-            print("✅ AI suggestions generated!")
-            print("   Positive: \(suggestion.positiveResponse)")
-            print("   Negative: \(suggestion.negativeResponse)")
             
             aiSuggestion = suggestion
             showingAISuggestion = true
             
         } catch {
-            print("❌ Error generating AI suggestions: \(error)")
             errorMessage = "Failed to generate suggestions: \(error.localizedDescription)"
         }
         
@@ -496,7 +613,6 @@ class ConversationViewModel: ObservableObject {
     
     func generateCoreMLAIResponseSuggestions() async {
         guard !messages.isEmpty else {
-            print("❌ No messages to generate suggestions from")
             return
         }
         
@@ -505,24 +621,17 @@ class ConversationViewModel: ObservableObject {
         do {
             let userPersonality = authService.currentUser?.personality
             
-            print("🧠 Generating CoreML AI suggestions...")
-            print("   Conversation history: \(messages.count) messages")
-            print("   User personality: \(userPersonality ?? "none")")
             
             let suggestion = try await coreMLAIService.generateResponseSuggestions(
                 conversationHistory: messages,
                 userPersonality: userPersonality
             )
             
-            print("✅ CoreML AI suggestions generated!")
-            print("   Positive: \(suggestion.positiveResponse)")
-            print("   Negative: \(suggestion.negativeResponse)")
             
             aiSuggestion = suggestion
             showingAISuggestion = true
             
         } catch {
-            print("❌ Error generating CoreML AI suggestions: \(error)")
             errorMessage = "Failed to generate suggestions: \(error.localizedDescription)"
         }
         
@@ -537,20 +646,37 @@ class ConversationViewModel: ObservableObject {
     
     func generateGIF(prompt: String) async {
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            print("❌ Invalid GIF prompt")
             return
         }
         
         isGeneratingGIF = true
-        showingGIFGenerator = false
+        generatedGIFURL = nil // Clear previous GIF
         
         do {
-            print("🎬 Generating GIF with prompt: \(prompt)")
             
             // Generate GIF
             let gifURL = try await gifService.generateGIF(prompt: prompt)
             
-            print("✅ GIF generated successfully: \(gifURL)")
+            
+            // Store the generated GIF for preview (don't send yet)
+            generatedGIFURL = gifURL
+            generatedGIFPrompt = prompt
+            
+        } catch {
+            errorMessage = "Failed to generate GIF: \(error.localizedDescription)"
+            showingGIFGenerator = false
+        }
+        
+        isGeneratingGIF = false
+    }
+    
+    func approveAndSendGIF() async {
+        guard let gifURL = generatedGIFURL,
+              let prompt = generatedGIFPrompt else {
+            return
+        }
+        
+        do {
             
             // Send as message
             try await messageService.sendMessage(
@@ -561,14 +687,27 @@ class ConversationViewModel: ObservableObject {
                 messageId: nil
             )
             
-            print("✅ GIF message sent!")
+            
+            // Clean up
+            generatedGIFURL = nil
+            generatedGIFPrompt = nil
+            showingGIFGenerator = false
             
         } catch {
-            print("❌ Error generating GIF: \(error)")
-            errorMessage = "Failed to generate GIF: \(error.localizedDescription)"
+            errorMessage = "Failed to send GIF: \(error.localizedDescription)"
         }
-        
-        isGeneratingGIF = false
+    }
+    
+    func rejectGIF() {
+        generatedGIFURL = nil
+        generatedGIFPrompt = nil
+        // Keep the sheet open for regeneration
+    }
+    
+    func cancelGIFGenerator() {
+        generatedGIFURL = nil
+        generatedGIFPrompt = nil
+        showingGIFGenerator = false
     }
     
     // MARK: - Research
@@ -579,7 +718,6 @@ class ConversationViewModel: ObservableObject {
     
     func conductResearch(prompt: String) async {
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            print("❌ Invalid research prompt")
             return
         }
         
@@ -587,13 +725,10 @@ class ConversationViewModel: ObservableObject {
         showingResearch = false
         
         do {
-            print("🔍 Conducting research: \(prompt)")
             
             // Conduct research
             let summary = try await researchService.conductResearch(prompt: prompt)
             
-            print("✅ Research complete!")
-            print("   Summary: \(summary.prefix(100))...")
             
             // Send as message
             let researchMessage = """
@@ -610,10 +745,8 @@ class ConversationViewModel: ObservableObject {
                 messageId: nil
             )
             
-            print("✅ Research message sent!")
             
         } catch {
-            print("❌ Error conducting research: \(error)")
             errorMessage = "Failed to conduct research: \(error.localizedDescription)"
         }
         
