@@ -17,10 +17,12 @@ class UserPickerViewModel: ObservableObject {
     
     private let userService: UserService
     private let currentUserId: String?
+    private let tutorFilter: Bool?
     
-    init(userService: UserService, currentUserId: String?) {
+    init(userService: UserService, currentUserId: String?, tutorFilter: Bool? = nil) {
         self.userService = userService
         self.currentUserId = currentUserId
+        self.tutorFilter = tutorFilter
     }
     
     func loadUsers() async {
@@ -28,7 +30,7 @@ class UserPickerViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let fetchedUsers = try await userService.fetchAllUsers()
+            let fetchedUsers = try await userService.fetchUsers(isTutor: tutorFilter)
             let filteredUsers = fetchedUsers.filter { $0.id != currentUserId }
             users = filteredUsers.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
         } catch {

@@ -495,14 +495,293 @@ def message_context(req: https_fn.Request) -> https_fn.Response:
     { "context": "Short analysis with cultural notes, tone, idioms, and potential misreadings." }
     """
     try:
+        # Handle CORS preflight
+        if req.method == "OPTIONS":
+            return https_fn.Response(
+                status=204,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                    "Access-Control-Max-Age": "3600"
+                }
+            )
+
+        # Parse request body
+        data = req.get_json()
+        
+        if not data:
+            return https_fn.Response(
+                json.dumps({"error": "Missing request body"}),
+                status=400,
+                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+            )
+        
+        selected_message = data.get("selected_message", "").strip()
+        conversation_history = data.get("conversation_history", [])
+        
+        if not selected_message:
+            return https_fn.Response(
+                json.dumps({"error": "'selected_message' is required and cannot be empty"}),
+                status=400,
+                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+            )
+        
+        logger.info(f"🌍 Generating cultural context for: {selected_message[:50]}...")
+        
+        # Get OpenAI API key
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
+        
+        if not openai_api_key:
+            logger.error("OPENAI_API_KEY not set in environment")
+            return https_fn.Response(
+                json.dumps({"error": "OpenAI API key not configured"}),
+                status=500,
+                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+            )
+        
+        # Format conversation history if provided
+        conversation_context = ""
+        if conversation_history:
+            conversation_text = "\n".join([
+                f"{msg.get('sender_name', 'Unknown')}: {msg.get('content', '')}"
+                for msg in conversation_history[-10:]  # Last 10 messages
+            ])
+            conversation_context = f"\n\nConversation context (recent messages):\n{conversation_text}\n"
+        
+        # Create comprehensive cultural analysis prompt
+        system_prompt = """You are an international cultural education expert specializing in cross-cultural communication. Your role is to help people understand the cultural nuances, idioms, tone, and potential misunderstandings in messages.
+
+Your analysis should be:
+- **Educational**: Teach the user about cultural diversity and different ways of thinking
+- **Insightful**: Reveal hidden meanings, cultural references, and contextual subtleties
+- **Practical**: Explain how the message might be interpreted differently across cultures
+- **Respectful**: Celebrate cultural diversity without stereotyping
+- **Concise**: Keep your response to 3-5 well-structured paragraphs (200-350 words)
+
+Focus on:
+1. **Cultural Context**: What cultural background or values might this message reflect?
+2. **Idioms & Expressions**: Explain any idioms, slang, or culture-specific phrases
+3. **Tone & Intent**: What emotional tone or intention might the sender be conveying?
+4. **Cross-Cultural Interpretation**: How might people from different cultures interpret this differently?
+5. **Emojis & Symbols**: If present, explain their cultural significance and potential variations in meaning
+6. **Formality & Social Norms**: Comment on the level of formality and what it suggests about social relationships
+7. **Potential Misunderstandings**: Highlight any phrases that could be misinterpreted or lost in translation
+
+Remember: Your goal is to broaden cultural understanding and help users communicate more effectively across diverse backgrounds."""
+
+        user_prompt = f"""Please provide a cultural and contextual analysis of this message:
+
+"{selected_message}"{conversation_context}
+
+Provide insights about the cultural context, tone, potential meanings, and how this message might be understood by people from different cultural backgrounds."""
+
+        # Initialize ChatOpenAI
+        llm = ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=0.7,
+            openai_api_key=openai_api_key
+        )
+        
+        # Generate cultural context analysis
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+        
+        response = llm.invoke(messages)
+        context_analysis = response.content
+        
+        logger.info(f"✅ Cultural context generated ({len(context_analysis)} chars)")
+        
         return https_fn.Response(
-            json.dumps({"context": "Hello World... coming soon..."}),
+            json.dumps({
+                "context": context_analysis
+            }),
             status=200,
             headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
         )
 
     except Exception as e:
         logger.error(f"Error in message_context: {e}", exc_info=True)
+        return https_fn.Response(
+            json.dumps({"error": str(e)}),
+            status=500,
+            headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+        )
+
+
+# ============================================================================
+# Language Tutor (AI-Powered Language Learning)
+# ============================================================================
+
+@https_fn.on_request(cors=options.CorsOptions(
+    cors_origins="*",
+    cors_methods=["POST", "OPTIONS"]
+))
+def language_tutor(req: https_fn.Request) -> https_fn.Response:
+    """
+    AI-powered language tutor that helps users learn a new language through conversation.
+    
+    Request Body:
+    {
+        "user_message": "Hola, ¿cómo estás?",
+        "conversation_history": [
+            {"role": "user", "content": "..."},
+            {"role": "assistant", "content": "..."}
+        ],
+        "learning_language": "es",  // ISO language code
+        "primary_language": "en"     // ISO language code
+    }
+    
+    Response:
+    {
+        "message": "¡Muy bien, gracias! ¿Y tú? How are you doing with your Spanish practice today?",
+        "translation": "Very good, thanks! And you? How are you doing with your Spanish practice today?"
+    }
+    """
+    try:
+        # Handle CORS preflight
+        if req.method == "OPTIONS":
+            return https_fn.Response(
+                status=204,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                    "Access-Control-Max-Age": "3600"
+                }
+            )
+        
+        # Parse request body
+        data = req.get_json()
+        
+        if not data:
+            return https_fn.Response(
+                json.dumps({"error": "Missing request body"}),
+                status=400,
+                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+            )
+        
+        user_message = data.get("user_message", "").strip()
+        conversation_history = data.get("conversation_history", [])
+        learning_language = data.get("learning_language", "es")
+        primary_language = data.get("primary_language", "en")
+        
+        if not user_message:
+            return https_fn.Response(
+                json.dumps({"error": "'user_message' is required and cannot be empty"}),
+                status=400,
+                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+            )
+        
+        logger.info(f"🎓 Language tutor: {learning_language} message from user")
+        
+        # Get OpenAI API key
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
+        
+        if not openai_api_key:
+            logger.error("OPENAI_API_KEY not set in environment")
+            return https_fn.Response(
+                json.dumps({"error": "OpenAI API key not configured"}),
+                status=500,
+                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+            )
+        
+        # Language names mapping
+        language_names = {
+            "en": "English",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "it": "Italian",
+            "pt": "Portuguese",
+            "zh": "Chinese",
+            "ja": "Japanese",
+            "ko": "Korean",
+            "ar": "Arabic",
+            "ru": "Russian",
+            "hi": "Hindi"
+        }
+        
+        learning_lang_name = language_names.get(learning_language, learning_language)
+        primary_lang_name = language_names.get(primary_language, primary_language)
+        
+        # Create tutor system prompt
+        system_prompt = f"""You are a friendly and encouraging language tutor helping someone learn {learning_lang_name}. 
+Your student's primary language is {primary_lang_name}.
+
+Your teaching approach:
+1. **Use the target language primarily**: Respond mostly in {learning_lang_name} to provide immersive practice
+2. **Mix in native language for clarity**: When introducing new concepts or correcting errors, include {primary_lang_name} explanations
+3. **Ask engaging questions**: Keep the conversation going by asking about the student's life, interests, and experiences
+4. **Provide gentle corrections**: If the student makes a mistake, gently correct it and explain why
+5. **Encourage and praise**: Be positive and encouraging to build confidence
+6. **Teach practically**: Focus on useful, everyday vocabulary and phrases
+7. **Use natural language**: Speak naturally, not like a textbook
+8. **Cultural insights**: Share interesting cultural facts and context when relevant
+
+Response style:
+- Start with the {learning_lang_name} response (2-3 sentences)
+- You can occasionally add brief {primary_lang_name} clarifications in parentheses for difficult words
+- Ask follow-up questions to continue the conversation
+- Keep responses conversational and friendly
+- Adjust complexity to the student's level based on their messages
+
+Remember: You're a supportive tutor having a natural conversation, not a formal teacher giving lessons."""
+
+        # Format conversation history
+        formatted_history = []
+        for msg in conversation_history[-10:]:  # Last 10 messages
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "user":
+                formatted_history.append(HumanMessage(content=content))
+            elif role == "assistant":
+                formatted_history.append(SystemMessage(content=content))
+        
+        # Initialize ChatOpenAI
+        llm = ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=0.8,  # Higher temperature for more natural, varied responses
+            openai_api_key=openai_api_key
+        )
+        
+        # Generate tutor response
+        messages = [
+            SystemMessage(content=system_prompt),
+            *formatted_history,
+            HumanMessage(content=user_message)
+        ]
+        
+        response = llm.invoke(messages)
+        tutor_message = response.content
+        
+        # Generate translation of the tutor's response
+        # Extract just the learning language part (before any parenthetical English explanations)
+        translation_prompt = f"""Translate this {learning_lang_name} text to {primary_lang_name}. 
+Only translate the {learning_lang_name} parts, ignore any {primary_lang_name} already in the text:
+
+{tutor_message}
+
+Provide only the translation, no additional commentary."""
+
+        translation_response = llm.invoke([HumanMessage(content=translation_prompt)])
+        translation = translation_response.content
+        
+        logger.info(f"✅ Language tutor response generated ({len(tutor_message)} chars)")
+        
+        return https_fn.Response(
+            json.dumps({
+                "message": tutor_message,
+                "translation": translation
+            }),
+            status=200,
+            headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
+        )
+    
+    except Exception as e:
+        logger.error(f"Error in language_tutor: {e}", exc_info=True)
         return https_fn.Response(
             json.dumps({"error": str(e)}),
             status=500,

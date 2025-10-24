@@ -192,5 +192,58 @@ class FirebaseAIService: AIService {
         print("✅ [DEBUG] Successfully extracted context (\(context.count) chars)")
         return context
     }
+    
+    func generateTutorResponse(
+        userMessage: String,
+        conversationHistory: [[String: String]],
+        learningLanguageCode: String,
+        primaryLanguageCode: String
+    ) async throws -> TutorResponse {
+        guard let url = URL(string: "\(baseFunctionsURL)/language_tutor") else {
+            throw NSError(
+                domain: "FirebaseAIService",
+                code: 400,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid URL"]
+            )
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "user_message": userMessage,
+            "conversation_history": conversationHistory,
+            "learning_language": learningLanguageCode,
+            "primary_language": primaryLanguageCode
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(
+                domain: "FirebaseAIService",
+                code: 500,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid response"]
+            )
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(
+                domain: "FirebaseAIService",
+                code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: "Server error: \(errorMessage)"]
+            )
+        }
+        
+        // Decode response
+        let decoder = JSONDecoder()
+        let tutorResponse = try decoder.decode(TutorResponse.self, from: data)
+        
+        return tutorResponse
+    }
 }
 

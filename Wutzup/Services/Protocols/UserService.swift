@@ -9,6 +9,7 @@ import Foundation
 
 protocol UserService: AnyObject {
     func fetchAllUsers() async throws -> [User]
+    func fetchUsers(isTutor: Bool?) async throws -> [User]
     func fetchUser(userId: String) async throws -> User
     func updatePersonality(userId: String, personality: String?) async throws
     func updateProfileImageUrl(userId: String, imageUrl: String?) async throws

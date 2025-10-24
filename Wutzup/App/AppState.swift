@@ -25,6 +25,7 @@ class AppState: ObservableObject {
     let userService: FirebaseUserService
     let presenceService: FirebasePresenceService
     let notificationService: FirebaseNotificationService
+    let aiService: FirebaseAIService
     
     // Network and offline management
     let networkMonitor = NetworkMonitor.shared
@@ -51,6 +52,7 @@ class AppState: ObservableObject {
         self.userService = FirebaseUserService()
         self.presenceService = FirebasePresenceService()
         self.notificationService = FirebaseNotificationService()
+        self.aiService = FirebaseAIService()
         self.chatListViewModel = ChatListViewModel(
             chatService: chatService,
             authService: authService,

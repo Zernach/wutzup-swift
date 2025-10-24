@@ -23,12 +23,14 @@ struct NewChatView: View {
     init(userService: UserService,
          currentUserId: String?,
          presenceService: PresenceService?,
+         tutorFilter: Bool? = false,
          createOrFetchConversation: @escaping @MainActor (User) async -> Conversation?,
          onConversationCreated: @escaping (Conversation) -> Void) {
         _userPickerViewModel = StateObject(
             wrappedValue: UserPickerViewModel(
                 userService: userService,
-                currentUserId: currentUserId
+                currentUserId: currentUserId,
+                tutorFilter: tutorFilter
             )
         )
         self.createOrFetchConversation = createOrFetchConversation
@@ -62,7 +64,7 @@ struct NewChatView: View {
                                     Text(user.displayName)
                                         .font(.headline)
                                         .foregroundColor(AppConstants.Colors.textPrimary)
-                                    Text(user.email)
+                                    Text(user.personality ?? user.email)
                                         .font(.subheadline)
                                         .foregroundColor(AppConstants.Colors.textSecondary)
                                 }
@@ -201,6 +203,14 @@ private final class PreviewUserService: UserService {
             User(id: "2", email: "bob@test.com", displayName: "Bob Smith"),
             User(id: "3", email: "charlie@test.com", displayName: "Charlie Brown")
         ]
+    }
+    
+    func fetchUsers(isTutor: Bool?) async throws -> [User] {
+        let allUsers = try await fetchAllUsers()
+        guard let isTutor = isTutor else {
+            return allUsers
+        }
+        return allUsers.filter { $0.isTutor == isTutor }
     }
     
     func fetchUser(userId: String) async throws -> User {

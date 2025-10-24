@@ -22,7 +22,11 @@ firestore/
 │       ├── profileImageUrl?: string
 │       ├── fcmToken?: string
 │       ├── createdAt: timestamp
-│       └── lastSeen?: timestamp
+│       ├── lastSeen?: timestamp
+│       ├── personality?: string
+│       ├── primaryLanguageCode?: string
+│       ├── learningLanguageCode?: string
+│       └── isTutor: boolean
 │
 ├── conversations/                  # Chat conversations
 │   └── {conversationId}/
@@ -78,6 +82,10 @@ firestore/
 | `fcmToken` | string | No | Firebase Cloud Messaging token for push notifications |
 | `createdAt` | timestamp | Yes | Account creation timestamp |
 | `lastSeen` | timestamp | No | Last time user was active |
+| `personality` | string | No | User's personality description (for AI interactions) |
+| `primaryLanguageCode` | string | No | User's primary language (ISO 639-1 code) |
+| `learningLanguageCode` | string | No | Language user is learning (ISO 639-1 code) |
+| `isTutor` | boolean | Yes | Whether user is a bot/LLM tutor (default: false) |
 
 #### TypeScript Type
 
@@ -90,6 +98,10 @@ interface User {
   fcmToken?: string;
   createdAt: FirebaseFirestore.Timestamp;
   lastSeen?: FirebaseFirestore.Timestamp;
+  personality?: string;
+  primaryLanguageCode?: string;
+  learningLanguageCode?: string;
+  isTutor: boolean;              // Whether user is a bot/LLM tutor
 }
 ```
 
@@ -107,6 +119,10 @@ class User(TypedDict):
     fcmToken: Optional[str]
     createdAt: SERVER_TIMESTAMP
     lastSeen: Optional[SERVER_TIMESTAMP]
+    personality: Optional[str]
+    primaryLanguageCode: Optional[str]
+    learningLanguageCode: Optional[str]
+    isTutor: bool
 ```
 
 #### Example Document
@@ -119,7 +135,11 @@ class User(TypedDict):
   "profileImageUrl": "https://storage.googleapis.com/wutzup/users/user_abc123.jpg",
   "fcmToken": "fcm_token_xyz",
   "createdAt": "2025-10-21T10:00:00Z",
-  "lastSeen": "2025-10-21T15:30:00Z"
+  "lastSeen": "2025-10-21T15:30:00Z",
+  "personality": "Friendly and helpful",
+  "primaryLanguageCode": "en",
+  "learningLanguageCode": "es",
+  "isTutor": false
 }
 ```
 
@@ -738,5 +758,5 @@ Firestore works best with denormalized data. For example:
 
 ---
 
-**Last Updated:** October 21, 2025
+**Last Updated:** October 24, 2025
 

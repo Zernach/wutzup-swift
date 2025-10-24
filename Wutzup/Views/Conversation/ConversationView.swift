@@ -383,6 +383,15 @@ private final class PreviewUserServiceForConversation: UserService {
         ]
     }
     
+    func fetchUsers(isTutor: Bool?) async throws -> [User] {
+        let allUsers = try await fetchAllUsers()
+        guard let isTutor = isTutor else {
+            return allUsers
+        }
+        // For preview purposes, just return all users regardless of tutor status
+        return allUsers
+    }
+    
     func fetchUser(userId: String) async throws -> User {
         let users = try await fetchAllUsers()
         guard let user = users.first(where: { $0.id == userId }) else {

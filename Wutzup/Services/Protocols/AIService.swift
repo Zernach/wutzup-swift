@@ -18,10 +18,27 @@ struct AIResponseSuggestion: Codable, Identifiable {
     }
 }
 
+struct TutorResponse: Codable {
+    let message: String
+    let translation: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case message
+        case translation
+    }
+}
+
 protocol AIService: AnyObject {
     func generateResponseSuggestions(
         conversationHistory: [Message],
         userPersonality: String?
     ) async throws -> AIResponseSuggestion
+    
+    func generateTutorResponse(
+        userMessage: String,
+        conversationHistory: [[String: String]],
+        learningLanguageCode: String,
+        primaryLanguageCode: String
+    ) async throws -> TutorResponse
 }
 

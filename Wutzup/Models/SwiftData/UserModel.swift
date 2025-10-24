@@ -17,8 +17,9 @@ final class UserModel {
     var fcmToken: String?
     var createdAt: Date
     var lastSeen: Date?
+    var isTutor: Bool
     
-    init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil) {
+    init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil, isTutor: Bool = false) {
         self.id = id
         self.email = email
         self.displayName = displayName
@@ -26,6 +27,7 @@ final class UserModel {
         self.fcmToken = fcmToken
         self.createdAt = createdAt
         self.lastSeen = lastSeen
+        self.isTutor = isTutor
     }
     
     // Convert from domain model
@@ -37,7 +39,8 @@ final class UserModel {
             profileImageUrl: user.profileImageUrl,
             fcmToken: user.fcmToken,
             createdAt: user.createdAt,
-            lastSeen: user.lastSeen
+            lastSeen: user.lastSeen,
+            isTutor: user.isTutor
         )
     }
     
@@ -50,7 +53,8 @@ final class UserModel {
             profileImageUrl: profileImageUrl,
             fcmToken: fcmToken,
             createdAt: createdAt,
-            lastSeen: lastSeen
+            lastSeen: lastSeen,
+            isTutor: isTutor
         )
     }
 }

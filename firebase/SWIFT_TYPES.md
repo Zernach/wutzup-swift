@@ -18,9 +18,14 @@ struct User: Identifiable, Codable {
     let fcmToken: String?
     let createdAt: Date
     let lastSeen: Date?
+    let personality: String?
+    let primaryLanguageCode: String?
+    let learningLanguageCode: String?
+    let isTutor: Bool
     
     enum CodingKeys: String, CodingKey {
         case id, email, displayName, profileImageUrl, fcmToken, createdAt, lastSeen
+        case personality, primaryLanguageCode, learningLanguageCode, isTutor
     }
 }
 
@@ -39,6 +44,10 @@ extension User {
         self.displayName = displayName
         self.profileImageUrl = data["profileImageUrl"] as? String
         self.fcmToken = data["fcmToken"] as? String
+        self.personality = data["personality"] as? String
+        self.primaryLanguageCode = data["primaryLanguageCode"] as? String
+        self.learningLanguageCode = data["learningLanguageCode"] as? String
+        self.isTutor = data["isTutor"] as? Bool ?? false
         
         if let timestamp = data["createdAt"] as? Timestamp {
             self.createdAt = timestamp.dateValue()
@@ -59,7 +68,8 @@ extension User {
             "id": id,
             "email": email,
             "displayName": displayName,
-            "createdAt": Timestamp(date: createdAt)
+            "createdAt": Timestamp(date: createdAt),
+            "isTutor": isTutor
         ]
         
         if let profileImageUrl = profileImageUrl {
@@ -72,6 +82,18 @@ extension User {
         
         if let lastSeen = lastSeen {
             data["lastSeen"] = Timestamp(date: lastSeen)
+        }
+        
+        if let personality = personality {
+            data["personality"] = personality
+        }
+        
+        if let primaryLanguageCode = primaryLanguageCode {
+            data["primaryLanguageCode"] = primaryLanguageCode
+        }
+        
+        if let learningLanguageCode = learningLanguageCode {
+            data["learningLanguageCode"] = learningLanguageCode
         }
         
         return data
@@ -547,7 +569,11 @@ func createUser(email: String, password: String, displayName: String) async thro
         profileImageUrl: nil,
         fcmToken: nil,
         createdAt: Date(),
-        lastSeen: nil
+        lastSeen: nil,
+        personality: nil,
+        primaryLanguageCode: nil,
+        learningLanguageCode: nil,
+        isTutor: false
     )
     
     try await db.collection("users").document(user.id).setData(user.toFirestoreData())
@@ -648,5 +674,5 @@ func setOnlineStatus(userId: String, isOnline: Bool) async throws {
 
 ---
 
-**Last Updated:** October 21, 2025
+**Last Updated:** October 24, 2025
 

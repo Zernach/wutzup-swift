@@ -5,7 +5,78 @@
 **Date**: October 24, 2025  
 **Phase**: Phase 1 (iOS Setup) 100% Complete → Ready for Xcode Project Creation
 
-**Latest Update**: 🐛 **Message Context API Type Error Fixed** (October 24, 2025)
+**Latest Update**: 🎯 **User Filtering by isTutor in Chat UI** (October 24, 2025)
+
+**User Picker Filtering Implementation:**
+- ✅ Added `fetchUsers(isTutor:)` method to UserService protocol
+- ✅ Implemented Firestore query filtering by `isTutor` field in FirebaseUserService
+- ✅ Updated UserPickerViewModel to accept and use `tutorFilter` parameter
+- ✅ Updated NewChatView to accept `tutorFilter` parameter
+- ✅ Updated NewGroupView to accept `tutorFilter` parameter
+- ✅ Updated ChatListView navigation to pass appropriate filters:
+  - **New Chat**: Shows only users with `isTutor = false`
+  - **New Group**: Shows only users with `isTutor = false`
+  - **New Tutor**: Shows only users with `isTutor = true`
+  - **New Tutor Group**: Shows only users with `isTutor = true`
+- ✅ Reusing same UI screens (NewChatView, NewGroupView) for all flows
+- ✅ Updated all preview services to include new method
+- 🎯 **Purpose:** Separate human users from AI tutors in conversation creation
+- 🎯 **Result:** Users see only relevant contacts when creating chats
+- 📝 **Files Changed:** UserService.swift, FirebaseUserService.swift, UserPickerViewModel.swift, NewChatView.swift, NewGroupView.swift, ChatListView.swift
+- 📚 **Navigation:** Same screens reused with different filters for tutor vs regular chats
+
+**Previously Completed**: 🌍 **Tutor Database Seeding Script Created** (October 24, 2025)
+
+**International Language Tutor Seeding:**
+- ✅ Created `seed_tutors.py` script for seeding 20 diverse international tutors
+- ✅ Each tutor has authentic foreign name with accent characters (María, François, Søren, etc.)
+- ✅ Unique personality descriptions for each tutor (150-200 characters each)
+- ✅ All tutors marked with `isTutor: true` in database
+- ✅ Languages covered: Spanish (3), French (2), German, Japanese, Mandarin, Russian, Polish, Greek, Turkish, Swedish, Danish, Norwegian, Czech, Hungarian, Vietnamese, Irish Gaelic, Portuguese
+- ✅ Both Firebase Auth and Firestore user creation
+- ✅ All tutors set to "online" presence status
+- ✅ Support for emulator and production deployment
+- ✅ Skip-auth mode for Firestore-only seeding
+- ✅ Updated firebase/README.md with complete usage instructions
+- 🎯 **Purpose:** Populate database with ready-to-use AI language tutors
+- 🎯 **Usage:** `python seed_tutors.py --project-id YOUR_PROJECT_ID` or `--emulator`
+- 📝 **Files Created:** firebase/seed_tutors.py (370 lines)
+- 📚 **Documentation:** firebase/README.md updated with tutor seeding section
+
+**Previously Completed**: 🤖 **User isTutor Field Added** (October 24, 2025)
+
+**User Schema Enhancement:**
+- ✅ Added `isTutor` boolean field to User model (Domain/User.swift)
+- ✅ Updated SwiftData UserModel with isTutor field
+- ✅ Updated Firebase schema documentation (SCHEMA.md)
+- ✅ Updated Swift types documentation (SWIFT_TYPES.md)
+- ✅ Added TypeScript and Python type definitions
+- ✅ Default value: false (regular users)
+- 🎯 **Purpose:** Distinguish bot/LLM users from human users
+- 🎯 **Use Case:** Language tutors and AI assistants marked as isTutor=true
+- 📝 **Files Changed:** User.swift, UserModel.swift, SCHEMA.md, SWIFT_TYPES.md
+- 📚 **Documentation:** Complete schema and type definitions updated
+
+**Previously Completed**: 🎓 **Language Tutor Feature Complete** (October 24, 2025)
+
+**Language Learning Tutor Implementation:**
+- ✅ Added "New Tutor" option to main menu (alongside New Chat, New Group, Account)
+- ✅ Created LanguageTutorView with immersive chat interface
+- ✅ AI tutor responds in user's learning language (set in Account settings)
+- ✅ Shows/hides translations for learning support
+- ✅ Extended AIService protocol with generateTutorResponse method
+- ✅ Implemented tutor service in FirebaseAIService
+- ✅ Created language_tutor Cloud Function with GPT-4o-mini
+- ✅ Supports 12 languages: Spanish, French, German, Italian, Portuguese, Chinese, Japanese, Korean, Arabic, Russian, Hindi, English
+- ✅ Personalized welcome messages in target language
+- ✅ Engaging conversational approach with cultural insights
+- ✅ Translation toggle for each tutor message
+- 🎯 **Status:** Complete! Ready for deployment and testing
+- 📝 **Files Created:** LanguageTutorView.swift, updated AIService.swift, FirebaseAIService.swift, main.py
+- 🎯 **User Flow:** Main menu → New Tutor → Chat in learning language with AI guidance
+- 📚 **Uses:** User's learningLanguageCode and primaryLanguageCode from Account settings
+
+**Previously Fixed**: 🐛 **Message Context API Type Error Fixed** (October 24, 2025)
 
 **Message Context API Type Safety Fix:**
 - ✅ Fixed "'list' object has no attribute 'strip'" error in message_context endpoint

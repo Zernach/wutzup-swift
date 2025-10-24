@@ -39,6 +39,7 @@ struct ChatListView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
+                        // Section 1: Regular chats
                         Button(action: openNewChat) {
                             Label("New Chat", systemImage: "square.and.pencil")
                         }
@@ -47,11 +48,23 @@ struct ChatListView: View {
                             Label("New Group", systemImage: "person.3")
                         }
 
-                        Button(action: openAccount) {
-                            Label("Account", systemImage: "person.circle")
+                        Divider()
+
+                        // Section 2: Tutor chats
+                        Button(action: openNewTutor) {
+                            Label("New Tutor", systemImage: "brain.head.profile")
+                        }
+
+                        Button(action: openNewTutorGroup) {
+                            Label("New Tutor Group", systemImage: "person.3.fill")
                         }
 
                         Divider()
+
+                        // Section 3: Account and logout
+                        Button(action: openAccount) {
+                            Label("Account", systemImage: "person.circle")
+                        }
 
                         Button(role: .destructive, action: {
                             Task { @MainActor in
@@ -77,6 +90,7 @@ struct ChatListView: View {
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
                     presenceService: appState.presenceService,
+                    tutorFilter: false,
                     createOrFetchConversation: { @MainActor user in
                         // Get current user
                         guard let currentUser = appState.currentUser else {
@@ -100,6 +114,7 @@ struct ChatListView: View {
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
                     chatListViewModel: viewModel,
+                    tutorFilter: false,
                     onGroupCreated: { conversation in
                         navigateToConversation(conversation)
                     }
@@ -107,6 +122,41 @@ struct ChatListView: View {
             }
             .navigationDestination(for: AccountRoute.self) { _ in
                 AccountView(presenceService: appState.presenceService)
+            }
+            .navigationDestination(for: NewTutorRoute.self) { _ in
+                NewChatView(
+                    userService: appState.userService,
+                    currentUserId: appState.currentUser?.id,
+                    presenceService: appState.presenceService,
+                    tutorFilter: true,
+                    createOrFetchConversation: { @MainActor user in
+                        // Get current user
+                        guard let currentUser = appState.currentUser else {
+                            return nil
+                        }
+                        // Call with user properties
+                        return await viewModel.createDirectConversation(
+                            with: user.id,
+                            otherDisplayName: user.displayName,
+                            otherEmail: user.email,
+                            currentUser: currentUser
+                        )
+                    },
+                    onConversationCreated: { conversation in
+                        navigateToConversation(conversation)
+                    }
+                )
+            }
+            .navigationDestination(for: NewTutorGroupRoute.self) { _ in
+                NewGroupView(
+                    userService: appState.userService,
+                    currentUserId: appState.currentUser?.id,
+                    chatListViewModel: viewModel,
+                    tutorFilter: true,
+                    onGroupCreated: { conversation in
+                        navigateToConversation(conversation)
+                    }
+                )
             }
         }
         .toolbarBackground(AppConstants.Colors.background, for: .navigationBar)
@@ -186,6 +236,14 @@ struct ChatListView: View {
         navigationPath.append(AccountRoute())
     }
 
+    private func openNewTutor() {
+        navigationPath.append(NewTutorRoute())
+    }
+
+    private func openNewTutorGroup() {
+        navigationPath.append(NewTutorGroupRoute())
+    }
+
     @MainActor
     private func navigateToConversation(_ conversation: Conversation) {
         // Update view model first
@@ -233,6 +291,8 @@ struct ConversationRowButtonStyle: ButtonStyle {
 private struct NewChatRoute: Hashable {}
 private struct NewGroupRoute: Hashable {}
 private struct AccountRoute: Hashable {}
+private struct NewTutorRoute: Hashable {}
+private struct NewTutorGroupRoute: Hashable {}
 
 private final class PreviewChatService: ChatService {
     func createConversation(withUserIds userIds: [String], isGroup: Bool, groupName: String?, participantNames: [String : String]) async throws -> Conversation {

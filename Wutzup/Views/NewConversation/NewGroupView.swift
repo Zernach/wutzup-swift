@@ -22,11 +22,13 @@ struct NewGroupView: View {
     init(userService: UserService,
          currentUserId: String?,
          chatListViewModel: ChatListViewModel,
+         tutorFilter: Bool? = false,
          onGroupCreated: @escaping (Conversation) -> Void) {
         _userPickerViewModel = StateObject(
             wrappedValue: UserPickerViewModel(
                 userService: userService,
-                currentUserId: currentUserId
+                currentUserId: currentUserId,
+                tutorFilter: tutorFilter
             )
         )
         self.chatListViewModel = chatListViewModel
@@ -71,7 +73,7 @@ struct NewGroupView: View {
                                         Text(user.displayName)
                                             .font(.body)
                                             .foregroundColor(AppConstants.Colors.textPrimary)
-                                        Text(user.email)
+                                        Text(user.personality ?? user.email)
                                             .font(.footnote)
                                             .foregroundColor(AppConstants.Colors.textSecondary)
                                     }
@@ -290,6 +292,14 @@ private final class PreviewUserService: UserService {
             User(id: "3", email: "charlie@test.com", displayName: "Charlie"),
             User(id: "4", email: "diana@test.com", displayName: "Diana")
         ]
+    }
+    
+    func fetchUsers(isTutor: Bool?) async throws -> [User] {
+        let allUsers = try await fetchAllUsers()
+        guard let isTutor = isTutor else {
+            return allUsers
+        }
+        return allUsers.filter { $0.isTutor == isTutor }
     }
     
     func fetchUser(userId: String) async throws -> User {

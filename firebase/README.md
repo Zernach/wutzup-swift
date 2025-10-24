@@ -8,11 +8,12 @@ This directory contains all Firebase configuration files, Cloud Functions, and d
 firebase/
 ├── README.md                  # This file
 ├── SCHEMA.md                  # Complete Firestore schema documentation
-├── SEEDING.md                 # Database seeding documentation (NEW!)
+├── SEEDING.md                 # Database seeding documentation
 ├── firebase.json              # Firebase project configuration
 ├── firestore.rules            # Firestore security rules
 ├── firestore.indexes.json     # Firestore database indexes
 ├── seed_database.py           # Database seeding script (auto-runs on deploy!)
+├── seed_tutors.py             # Language tutor seeding script (NEW!)
 └── functions/                 # Cloud Functions
     ├── main.py                # Cloud Functions implementation
     ├── requirements.txt       # Python dependencies
@@ -144,6 +145,38 @@ python seed_database.py --project-id YOUR_PROJECT_ID --clear
 - 30-120+ family-friendly messages across all conversations
 - Group chats with fun names: "Family Chat", "Book Club", "Recipe Exchange", etc.
 - Presence data for all users
+
+### Seeding Language Tutors
+
+A dedicated script seeds the database with 20 diverse international AI tutors:
+
+```bash
+# Install dependencies (if needed)
+pip install firebase-admin
+
+# Seed local emulator with tutors
+python seed_tutors.py --emulator
+
+# Seed production with tutors
+python seed_tutors.py --project-id YOUR_PROJECT_ID
+
+# Skip Firebase Auth creation (Firestore only)
+python seed_tutors.py --project-id YOUR_PROJECT_ID --skip-auth
+```
+
+**Tutor Data Created:**
+- 20 international language tutors with foreign names (including accents)
+- Each tutor has a unique personality description
+- Tutors are marked with `isTutor: true`
+- Languages include: Spanish, French, German, Japanese, Mandarin, Russian, Polish, Greek, Turkish, Swedish, Danish, Norwegian, Czech, Hungarian, Vietnamese, Irish Gaelic, Portuguese
+- All tutors are set to "online" status
+- Each tutor has `primaryLanguageCode` and `learningLanguageCode` set
+
+**Sample Tutors:**
+- **María García** (Spanish) - Warm and encouraging tutor from Madrid
+- **François Dubois** (French) - Sophisticated Parisian literature enthusiast
+- **Yuki Tanaka** (Japanese) - Methodical tutor specializing in kanji
+- **Søren Nielsen** (Danish) - Cheerful Copenhagen native who teaches through humor
 
 **📖 For complete seeding documentation, see [SEEDING.md](./SEEDING.md)**
 

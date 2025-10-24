@@ -19,6 +19,7 @@ struct User: Identifiable, Codable, Hashable, Sendable {
     var personality: String?
     var primaryLanguageCode: String?
     var learningLanguageCode: String?
+    var isTutor: Bool
 
     // Explicit CodingKeys to ensure proper encoding/decoding
     enum CodingKeys: String, CodingKey {
@@ -32,9 +33,10 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         case personality
         case primaryLanguageCode
         case learningLanguageCode
+        case isTutor
     }
 
-    init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil, personality: String? = nil, primaryLanguageCode: String? = nil, learningLanguageCode: String? = nil) {
+    init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil, personality: String? = nil, primaryLanguageCode: String? = nil, learningLanguageCode: String? = nil, isTutor: Bool = false) {
         self.id = id
         self.email = email
         self.displayName = displayName
@@ -45,6 +47,7 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         self.personality = personality
         self.primaryLanguageCode = primaryLanguageCode
         self.learningLanguageCode = learningLanguageCode
+        self.isTutor = isTutor
     }
 
     // Initialize from Firestore document
@@ -76,6 +79,7 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         self.personality = data["personality"] as? String
         self.primaryLanguageCode = data["primaryLanguageCode"] as? String
         self.learningLanguageCode = data["learningLanguageCode"] as? String
+        self.isTutor = data["isTutor"] as? Bool ?? false
 
         if let createdAtTimestamp = data["createdAt"] as? Timestamp {
             self.createdAt = createdAtTimestamp.dateValue()
@@ -119,6 +123,8 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         if let learningLanguageCode = learningLanguageCode {
             data["learningLanguageCode"] = learningLanguageCode
         }
+        
+        data["isTutor"] = isTutor
 
         return data
     }

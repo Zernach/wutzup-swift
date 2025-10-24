@@ -20,6 +20,28 @@ class FirebaseUserService: UserService {
         return users
     }
     
+    func fetchUsers(isTutor: Bool?) async throws -> [User] {
+        // If no filter specified, return all users
+        guard let isTutor = isTutor else {
+            return try await fetchAllUsers()
+        }
+        
+        // When filtering for tutors, use Firestore query
+        if isTutor {
+            let snapshot = try await db.collection("users")
+                .whereField("isTutor", isEqualTo: true)
+                .getDocuments()
+            
+            let users = snapshot.documents.compactMap { User(from: $0) }
+            return users
+        }
+        
+        // When filtering for non-tutors, fetch all users and filter client-side
+        // This includes users where isTutor is false OR null/undefined
+        let allUsers = try await fetchAllUsers()
+        return allUsers.filter { $0.isTutor != true }
+    }
+    
     func fetchUser(userId: String) async throws -> User {
         let document = try await db.collection("users").document(userId).getDocument()
         
