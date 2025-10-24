@@ -9,9 +9,7 @@ import SwiftUI
 
 struct AIMenuView: View {
     @Binding var isExpanded: Bool
-    let isGeneratingCoreML: Bool
     let isGeneratingAI: Bool
-    let onConciseReplies: () -> Void
     let onThoughtfulReplies: () -> Void
     let onConductResearch: () -> Void
     let onGenerateGIF: () -> Void
@@ -21,30 +19,12 @@ struct AIMenuView: View {
             if isExpanded {
                 // Menu Items
                 VStack(spacing: 0) {
-                    // Concise Reply (CoreML)
-                    menuItem(
-                        icon: "bolt.fill",
-                        iconColor: AppConstants.Colors.brightGreen,
-                        title: "Concise Reply",
-                        subtitle: "Fast, on-device",
-                        isLoading: isGeneratingCoreML,
-                        action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                isExpanded = false
-                            }
-                            onConciseReplies()
-                        }
-                    )
-                    
-                    Divider()
-                        .background(AppConstants.Colors.border)
-                    
-                    // Thoughtful Reply (OpenAI)
+                    // AI Reply (Firebase/Python)
                     menuItem(
                         icon: "sparkles",
                         iconColor: AppConstants.Colors.accent,
-                        title: "Thoughtful Reply",
-                        subtitle: "Detailed, contextual",
+                        title: "AI Reply",
+                        subtitle: "Intelligent response",
                         isLoading: isGeneratingAI,
                         action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -118,7 +98,7 @@ struct AIMenuView: View {
                                 .stroke(AppConstants.Colors.accent.opacity(0.3), lineWidth: 1)
                         )
                     
-                    if isGeneratingAI || isGeneratingCoreML {
+                    if isGeneratingAI {
                         ProgressView()
                             .tint(AppConstants.Colors.accent)
                     } else {
@@ -203,9 +183,7 @@ struct AIMenuView: View {
             HStack {
                 AIMenuView(
                     isExpanded: .constant(true),
-                    isGeneratingCoreML: false,
                     isGeneratingAI: false,
-                    onConciseReplies: {},
                     onThoughtfulReplies: {},
                     onConductResearch: {},
                     onGenerateGIF: {}

@@ -68,6 +68,20 @@
   - No direct APNs integration needed
   - FCM handles token management
 
+#### Machine Learning & AI
+
+- **Translation** - Powered by Gemini API (via Firebase Cloud Functions)
+  - Translates messages automatically to user's configured "Learning Language"
+  - User sets their Learning Language in Account settings
+  - One-tap translation without language selection prompt
+  - Supported languages: English, Spanish, French, German, Italian, Portuguese, Chinese, Japanese, Korean, Arabic, Russian, Hindi
+  - Used for language learning features
+- **Firebase Cloud Functions with Python** - Backend AI services
+  - OpenAI GPT integration for intelligent responses
+  - Web research capabilities via Tavily API
+  - GIF generation via Giphy API
+  - All AI processing happens server-side for consistency and scalability
+
 #### Development Tools
 
 - **Xcode 15+** - Primary IDE
@@ -1071,4 +1085,4 @@ Firebase architecture provides:
 
 ---
 
-**Last Updated**: October 21, 2025
+**Last Updated**: October 24, 2025

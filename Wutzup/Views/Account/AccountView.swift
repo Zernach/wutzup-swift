@@ -9,6 +9,39 @@ import SwiftUI
 import UserNotifications
 import PhotosUI
 
+/// Supported languages for translation features
+enum SupportedLanguage: String, CaseIterable {
+    case english = "en"
+    case spanish = "es"
+    case french = "fr"
+    case german = "de"
+    case italian = "it"
+    case portuguese = "pt"
+    case chinese = "zh"
+    case japanese = "ja"
+    case korean = "ko"
+    case arabic = "ar"
+    case russian = "ru"
+    case hindi = "hi"
+    
+    var displayName: String {
+        switch self {
+        case .english: return "English"
+        case .spanish: return "Spanish"
+        case .french: return "French"
+        case .german: return "German"
+        case .italian: return "Italian"
+        case .portuguese: return "Portuguese"
+        case .chinese: return "Chinese"
+        case .japanese: return "Japanese"
+        case .korean: return "Korean"
+        case .arabic: return "Arabic"
+        case .russian: return "Russian"
+        case .hindi: return "Hindi"
+        }
+    }
+}
+
 struct AccountView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
@@ -28,6 +61,9 @@ struct AccountView: View {
     @State private var isUploadingImage = false
     @State private var uploadError: String?
     @State private var showingUploadError = false
+    @State private var primaryLanguageCode: String = ""
+    @State private var learningLanguageCode: String = ""
+    @State private var isSavingLanguages = false
     
     var presenceService: PresenceService? = nil
     
@@ -80,6 +116,73 @@ struct AccountView: View {
                     Divider()
                         .background(AppConstants.Colors.border)
                     
+                    // Language Preferences Section
+                    VStack(spacing: 0) {
+                        // Section Header
+                        HStack {
+                            Text("Languages")
+                                .font(.headline)
+                                .foregroundColor(AppConstants.Colors.textPrimary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 12)
+
+                        VStack(spacing: 12) {
+                            // Primary Language Picker
+                            VStack(alignment: .leading, spacing: 8) {
+                                Picker("Primary Language", selection: $primaryLanguageCode) {
+                                    ForEach(SupportedLanguage.allCases, id: \.rawValue) { lang in
+                                        Text(lang.displayName).tag(lang.rawValue)
+                                    }
+                                }
+                                .pickerStyle(.navigationLink)
+                                .tint(AppConstants.Colors.textPrimary)
+                                .onChange(of: primaryLanguageCode) { _, _ in
+                                    saveLanguages()
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(AppConstants.Colors.surface)
+
+                            // Learning Language Picker
+                            VStack(alignment: .leading, spacing: 8) {
+                                Picker("Learning Language", selection: $learningLanguageCode) {
+                                    ForEach(SupportedLanguage.allCases, id: \.rawValue) { lang in
+                                        Text(lang.displayName).tag(lang.rawValue)
+                                    }
+                                }
+                                .pickerStyle(.navigationLink)
+                                .tint(AppConstants.Colors.textPrimary)
+                                .onChange(of: learningLanguageCode) { _, _ in
+                                    saveLanguages()
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(AppConstants.Colors.surface)
+
+                            if isSavingLanguages {
+                                HStack {
+                                    ProgressView()
+                                        .tint(AppConstants.Colors.textSecondary)
+                                    Text("Saving languages...")
+                                        .font(.caption)
+                                        .foregroundColor(AppConstants.Colors.textSecondary)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                            }
+                        }
+                        .padding(.bottom, 20)
+                    }
+
+                    Divider()
+                        .background(AppConstants.Colors.border)
+
                     // Personality Section
                     VStack(spacing: 0) {
                         // Section Header
@@ -344,6 +447,7 @@ struct AccountView: View {
             await loadFCMToken()
             await checkNotificationStatus()
             loadPersonality()
+            initializeLanguages()
         }
         .onChange(of: selectedPhotoItem) { _, newItem in
             Task {
@@ -545,6 +649,47 @@ struct AccountView: View {
                 
             } catch {
                 isSavingPersonality = false
+            }
+        }
+    }
+    
+    private func initializeLanguages() {
+        // Default primary to device language if not set on user
+        if let userPrimary = appState.currentUser?.primaryLanguageCode, !userPrimary.isEmpty {
+            primaryLanguageCode = userPrimary
+        } else {
+            if let deviceCode = Locale.current.language.languageCode?.identifier {
+                primaryLanguageCode = deviceCode
+            } else {
+                primaryLanguageCode = SupportedLanguage.english.rawValue
+            }
+        }
+        // Default learning language to Spanish if not set
+        if let userLearning = appState.currentUser?.learningLanguageCode, !userLearning.isEmpty {
+            learningLanguageCode = userLearning
+        } else {
+            learningLanguageCode = SupportedLanguage.spanish.rawValue
+        }
+    }
+    
+    private func saveLanguages() {
+        guard let userId = appState.currentUser?.id else { return }
+        isSavingLanguages = true
+        Task { @MainActor in
+            do {
+                try await appState.userService.updateLanguages(
+                    userId: userId,
+                    primaryLanguageCode: primaryLanguageCode,
+                    learningLanguageCode: learningLanguageCode
+                )
+                if var updatedUser = appState.currentUser {
+                    updatedUser.primaryLanguageCode = primaryLanguageCode
+                    updatedUser.learningLanguageCode = learningLanguageCode
+                    appState.currentUser = updatedUser
+                }
+                isSavingLanguages = false
+            } catch {
+                isSavingLanguages = false
             }
         }
     }

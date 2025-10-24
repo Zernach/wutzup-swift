@@ -12,4 +12,5 @@ protocol UserService: AnyObject {
     func fetchUser(userId: String) async throws -> User
     func updatePersonality(userId: String, personality: String?) async throws
     func updateProfileImageUrl(userId: String, imageUrl: String?) async throws
+    func updateLanguages(userId: String, primaryLanguageCode: String?, learningLanguageCode: String?) async throws
 }

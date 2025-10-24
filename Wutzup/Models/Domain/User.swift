@@ -17,6 +17,8 @@ struct User: Identifiable, Codable, Hashable, Sendable {
     var createdAt: Date
     var lastSeen: Date?
     var personality: String?
+    var primaryLanguageCode: String?
+    var learningLanguageCode: String?
 
     // Explicit CodingKeys to ensure proper encoding/decoding
     enum CodingKeys: String, CodingKey {
@@ -28,9 +30,11 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         case createdAt
         case lastSeen
         case personality
+        case primaryLanguageCode
+        case learningLanguageCode
     }
 
-    init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil, personality: String? = nil) {
+    init(id: String, email: String, displayName: String, profileImageUrl: String? = nil, fcmToken: String? = nil, createdAt: Date = Date(), lastSeen: Date? = nil, personality: String? = nil, primaryLanguageCode: String? = nil, learningLanguageCode: String? = nil) {
         self.id = id
         self.email = email
         self.displayName = displayName
@@ -39,6 +43,8 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         self.createdAt = createdAt
         self.lastSeen = lastSeen
         self.personality = personality
+        self.primaryLanguageCode = primaryLanguageCode
+        self.learningLanguageCode = learningLanguageCode
     }
 
     // Initialize from Firestore document
@@ -68,6 +74,8 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         self.profileImageUrl = data["profileImageUrl"] as? String
         self.fcmToken = data["fcmToken"] as? String
         self.personality = data["personality"] as? String
+        self.primaryLanguageCode = data["primaryLanguageCode"] as? String
+        self.learningLanguageCode = data["learningLanguageCode"] as? String
 
         if let createdAtTimestamp = data["createdAt"] as? Timestamp {
             self.createdAt = createdAtTimestamp.dateValue()
@@ -104,6 +112,12 @@ struct User: Identifiable, Codable, Hashable, Sendable {
         }
         if let personality = personality {
             data["personality"] = personality
+        }
+        if let primaryLanguageCode = primaryLanguageCode {
+            data["primaryLanguageCode"] = primaryLanguageCode
+        }
+        if let learningLanguageCode = learningLanguageCode {
+            data["learningLanguageCode"] = learningLanguageCode
         }
 
         return data

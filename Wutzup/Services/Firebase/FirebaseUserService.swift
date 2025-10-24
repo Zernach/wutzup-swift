@@ -58,6 +58,24 @@ class FirebaseUserService: UserService {
         try await db.collection("users").document(userId).updateData(updateData)
     }
     
+    func updateLanguages(userId: String, primaryLanguageCode: String?, learningLanguageCode: String?) async throws {
+        var updateData: [String: Any] = [:]
+        
+        if let primaryLanguageCode = primaryLanguageCode, !primaryLanguageCode.isEmpty {
+            updateData["primaryLanguageCode"] = primaryLanguageCode
+        } else {
+            updateData["primaryLanguageCode"] = FieldValue.delete()
+        }
+        
+        if let learningLanguageCode = learningLanguageCode, !learningLanguageCode.isEmpty {
+            updateData["learningLanguageCode"] = learningLanguageCode
+        } else {
+            updateData["learningLanguageCode"] = FieldValue.delete()
+        }
+        
+        try await db.collection("users").document(userId).updateData(updateData)
+    }
+    
     // MARK: - Image Upload
     
     /// Uploads a profile image to Firebase Storage and returns the download URL

@@ -38,6 +38,8 @@ struct ConversationView: View {
                             MessageBubbleView(
                                 message: message,
                                 conversation: viewModel.conversation,
+                                conversationMessages: viewModel.messages,
+                                learningLanguageCode: appState.currentUser?.learningLanguageCode,
                                 onRetry: { failedMessage in
                                     Task { @MainActor in
                                         await viewModel.retryMessage(failedMessage)
@@ -108,13 +110,7 @@ struct ConversationView: View {
                 HStack {
                     AIMenuView(
                         isExpanded: $showingAIMenu,
-                        isGeneratingCoreML: viewModel.isGeneratingCoreMLAI,
                         isGeneratingAI: viewModel.isGeneratingAI,
-                        onConciseReplies: {
-                            Task { @MainActor in
-                                await viewModel.generateCoreMLAIResponseSuggestions()
-                            }
-                        },
                         onThoughtfulReplies: {
                             Task { @MainActor in
                                 await viewModel.generateAIResponseSuggestions()
@@ -156,7 +152,7 @@ struct ConversationView: View {
         .sheet(isPresented: $viewModel.showingAISuggestion) {
             ResponseSuggestionView(
                 suggestion: viewModel.aiSuggestion,
-                isLoading: viewModel.isGeneratingAI || viewModel.isGeneratingCoreMLAI,
+                isLoading: viewModel.isGeneratingAI,
                 onSelect: { response in
                     viewModel.selectAISuggestion(response)
                 },
@@ -398,4 +394,6 @@ private final class PreviewUserServiceForConversation: UserService {
     func updatePersonality(userId: String, personality: String?) async throws { }
     
     func updateProfileImageUrl(userId: String, imageUrl: String?) async throws { }
+    
+    func updateLanguages(userId: String, primaryLanguageCode: String?, learningLanguageCode: String?) async throws { }
 }

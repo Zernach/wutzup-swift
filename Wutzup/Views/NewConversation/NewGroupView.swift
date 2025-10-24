@@ -307,4 +307,8 @@ private final class PreviewUserService: UserService {
     func updateProfileImageUrl(userId: String, imageUrl: String?) async throws {
         // No-op for preview
     }
+    
+    func updateLanguages(userId: String, primaryLanguageCode: String?, learningLanguageCode: String?) async throws {
+        // No-op for preview
+    }
 }

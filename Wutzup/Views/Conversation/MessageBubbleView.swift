@@ -10,6 +10,8 @@ import SwiftUI
 struct MessageBubbleView: View {
     let message: Message
     let conversation: Conversation?
+    var conversationMessages: [Message] = []
+    var learningLanguageCode: String? = nil
     var onRetry: ((Message) -> Void)?
     var onAppear: (() -> Void)?
     var onDisappear: (() -> Void)?
@@ -17,109 +19,189 @@ struct MessageBubbleView: View {
     @State private var isResearchExpanded = false
     @State private var hasInitialized = false
     @State private var showingFullScreenImage = false
+    @State private var showingActionsToolbar = false
+    @State private var translatedText: String?
+    @State private var translationLanguage: String?
+    @State private var contextText: String?
     
     var body: some View {
-        HStack {
-            if message.isFromCurrentUser {
-                Spacer()
-            }
-            
-            VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 4) {
-                // Sender name (for group chats or other users)
-                if !message.isFromCurrentUser, let senderName = message.senderName {
-                    Text(senderName)
-                        .font(.caption)
-                        .foregroundColor(AppConstants.Colors.textSecondary)
+        ZStack {
+            HStack {
+                if message.isFromCurrentUser {
+                    Spacer()
                 }
                 
-                // Message bubble
-                VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 0) {
-                    // Message content with expand/collapse for research results
-                    // Show text content if it exists and is not empty
-                    if !message.content.isEmpty {
-                        VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 8) {
-                            Text(displayedMessageContent)
-                                .foregroundColor(message.isFromCurrentUser ? .white : AppConstants.Colors.textPrimary)
-                        
-                            // Show more button for collapsed research results
-                            if isResearchResult && !isResearchExpanded {
-                                HStack {
-                                    Spacer()
-                                    Button(action: {
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            isResearchExpanded = true
+                VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 4) {
+                    // Sender name (for group chats or other users)
+                    if !message.isFromCurrentUser, let senderName = message.senderName {
+                        Text(senderName)
+                            .font(.caption)
+                            .foregroundColor(AppConstants.Colors.textSecondary)
+                    }
+                    
+                    // Message bubble
+                    VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 0) {
+                        // Message content with expand/collapse for research results
+                        // Show text content if it exists and is not empty
+                        if !message.content.isEmpty {
+                            VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 8) {
+                                // Original message content
+                                if let translatedText = translatedText, let translationLanguage = translationLanguage {
+                                    // Show original and translation side-by-side
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        // Original message
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("Original")
+                                                .font(.caption2)
+                                                .foregroundColor(message.isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textSecondary)
+                                            Text(displayedMessageContent)
+                                                .foregroundColor(message.isFromCurrentUser ? .white : AppConstants.Colors.textPrimary)
                                         }
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Text("Show more")
-                                                .font(.caption)
-                                                .foregroundColor(.white)
-                                            Image(systemName: "chevron.down")
-                                                .font(.caption)
-                                                .foregroundColor(.white)
+                                        
+                                        Divider()
+                                            .background(message.isFromCurrentUser ? Color.white.opacity(0.3) : AppConstants.Colors.border)
+                                        
+                                        // Translation
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(translationLanguage)
+                                                .font(.caption2)
+                                                .foregroundColor(message.isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textSecondary)
+                                            Text(translatedText)
+                                                .foregroundColor(message.isFromCurrentUser ? .white : AppConstants.Colors.textPrimary)
+                                        }
+                                    }
+                                } else {
+                                    Text(displayedMessageContent)
+                                        .foregroundColor(message.isFromCurrentUser ? .white : AppConstants.Colors.textPrimary)
+                                }
+                            
+                                // Show more button for collapsed research results
+                                if isResearchResult && !isResearchExpanded {
+                                    HStack {
+                                        Spacer()
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                isResearchExpanded = true
+                                            }
+                                        }) {
+                                            HStack(spacing: 4) {
+                                                Text("Show more")
+                                                    .font(.caption)
+                                                    .foregroundColor(.white)
+                                                Image(systemName: "chevron.down")
+                                                    .font(.caption)
+                                                    .foregroundColor(.white)
+                                            }
                                         }
                                     }
                                 }
+                                
+                                // Show context below if available
+                                if let contextText = contextText {
+                                    Divider()
+                                        .background(message.isFromCurrentUser ? Color.white.opacity(0.3) : AppConstants.Colors.border)
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Context")
+                                            .font(.caption2)
+                                            .foregroundColor(message.isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textSecondary)
+                                        Text(contextText)
+                                            .foregroundColor(message.isFromCurrentUser ? .white.opacity(0.9) : AppConstants.Colors.textPrimary)
+                                            .font(.system(size: 14))
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            
+                            // Add spacing between text and GIF if both exist
+                            if message.mediaUrl != nil {
+                                Spacer()
+                                    .frame(height: 6)
+                            }
+                        }
+                        
+                        // Media content (GIF, images, etc.) - displayed after text
+                        if let mediaUrl = message.mediaUrl,
+                           let url = URL(string: mediaUrl) {
+                            AnimatedImageView(
+                                url: url,
+                                cornerRadius: hasTextContent ? 8 : AppConstants.Sizes.messageBubbleCornerRadius
+                            )
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                            .highPriorityGesture(
+                                TapGesture()
+                                    .onEnded { _ in
+                                        showingFullScreenImage = true
+                                    }
+                            )
+                        }
+                        
+                        // Timestamp and status
+                        HStack(spacing: 4) {
+                            // Timestamp
+                            Text(message.timestamp.timeAgoDisplay())
+                                .font(.caption2)
+                                .foregroundColor(message.isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textTertiary)
+                            
+                            // Status indicators (for sent messages)
+                            if message.isFromCurrentUser {
+                                statusIcon
                             }
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        
-                        // Add spacing between text and GIF if both exist
-                        if message.mediaUrl != nil {
-                            Spacer()
-                                .frame(height: 6)
+                    }
+                    .background(bubbleColor)
+                    .cornerRadius(AppConstants.Sizes.messageBubbleCornerRadius)
+                    .onTapGesture {
+                        // Retry sending if message failed
+                        if message.status == .failed {
+                            onRetry?(message)
+                        } else if !message.content.isEmpty {
+                            // Show actions toolbar for messages with text content
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                showingActionsToolbar.toggle()
+                            }
                         }
                     }
                     
-                    // Media content (GIF, images, etc.) - displayed after text
-                    if let mediaUrl = message.mediaUrl,
-                       let url = URL(string: mediaUrl) {
-                        AnimatedImageView(
-                            url: url,
-                            cornerRadius: hasTextContent ? 8 : AppConstants.Sizes.messageBubbleCornerRadius
-                        )
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 8)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(
-                            TapGesture()
-                                .onEnded { _ in
-                                    showingFullScreenImage = true
+                    // Actions Toolbar
+                    if showingActionsToolbar {
+                        MessageActionsToolbar(
+                            messageText: message.content,
+                            conversationHistory: conversationMessages,
+                            learningLanguageCode: learningLanguageCode,
+                            onDismiss: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    showingActionsToolbar = false
                                 }
+                            },
+                            onTranslationComplete: { translatedText, languageName in
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    self.translatedText = translatedText
+                                    self.translationLanguage = languageName
+                                }
+                            },
+                            onContextComplete: { contextText in
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    self.contextText = contextText
+                                }
+                            }
                         )
-                    }
-                    
-                    // Timestamp and status
-                    HStack(spacing: 4) {
-                        // Timestamp
-                        Text(message.timestamp.timeAgoDisplay())
-                            .font(.caption2)
-                            .foregroundColor(message.isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textTertiary)
-                        
-                        // Status indicators (for sent messages)
-                        if message.isFromCurrentUser {
-                            statusIcon
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                }
-                .background(bubbleColor)
-                .cornerRadius(AppConstants.Sizes.messageBubbleCornerRadius)
-                .onTapGesture {
-                    // Retry sending if message failed
-                    if message.status == .failed {
-                        onRetry?(message)
+                        .padding(.top, 8)
+                        .transition(.scale(scale: 0.8, anchor: message.isFromCurrentUser ? .topTrailing : .topLeading).combined(with: .opacity))
                     }
                 }
+                
+                if !message.isFromCurrentUser {
+                    Spacer()
+                }
             }
-            
-            if !message.isFromCurrentUser {
-                Spacer()
-            }
+            .padding(.horizontal)
         }
-        .padding(.horizontal)
         .onAppear {
             // Initialize expansion state for research results on first appearance
             if !hasInitialized && isResearchResult {

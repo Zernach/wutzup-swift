@@ -30,6 +30,7 @@ enum AppConstants {
         static let mutedIcon = Color.white.opacity(0.65)
         static let brightGreen = Color(red: 0x72 / 255.0, green: 0xfa / 255.0, blue: 0x41 / 255.0) // #72fa41
         static let purple = Color(red: 0x88 / 255.0, green: 0x44 / 255.0, blue: 0xcc / 255.0) // #8844cc
+        static let teal = Color(red: 0x14 / 255.0, green: 0xb8 / 255.0, blue: 0xa6 / 255.0) // #14b8a6
         static let brightYellow = Color(red: 0xfb / 255.0, green: 0xff / 255.0, blue: 0x00 / 255.0) // #fbff00
     }
     

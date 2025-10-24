@@ -9,11 +9,14 @@ import Foundation
 
 class FirebaseAIService: AIService {
     private let functionURL: String
+    private let baseFunctionsURL: String
     
-    init(functionURL: String = "https://generate-response-suggestions-uv2bm2c2tq-uc.a.run.app") {
+    init(functionURL: String = "https://generate-response-suggestions-uv2bm2c2tq-uc.a.run.app",
+         baseFunctionsURL: String = "https://us-central1-wutzup-swift.cloudfunctions.net") {
         // Cloud Function URL (2nd gen) - deployed via Firebase
         // Get this URL from: firebase deploy --only functions:generate_response_suggestions
         self.functionURL = functionURL
+        self.baseFunctionsURL = baseFunctionsURL
     }
     
     func generateResponseSuggestions(
@@ -80,6 +83,60 @@ class FirebaseAIService: AIService {
         let suggestion = try decoder.decode(AIResponseSuggestion.self, from: data)
         
         return suggestion
+    }
+
+    // MARK: - New Endpoints
+    func translateText(text: String, targetLanguage: String) async throws -> (translatedText: String, detectedLanguage: String?) {
+        guard let url = URL(string: "\(baseFunctionsURL)/translate_text") else {
+            throw NSError(domain: "FirebaseAIService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "text": text,
+            "target_language": targetLanguage
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "FirebaseAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: "Server error: \(errorMessage)"])
+        }
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let translated = json?["translated_text"] as? String ?? ""
+        let detected = json?["detected_language"] as? String
+        return (translated, detected)
+    }
+
+    func getMessageContext(selectedMessage: String, conversationHistory: [Message]) async throws -> String {
+        guard let url = URL(string: "\(baseFunctionsURL)/message_context") else {
+            throw NSError(domain: "FirebaseAIService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let historyPayload: [[String: Any]] = conversationHistory.suffix(10).map { m in
+            [
+                "sender_id": m.senderId,
+                "sender_name": m.senderName ?? "Unknown",
+                "content": m.content,
+                "timestamp": ISO8601DateFormatter().string(from: m.timestamp),
+                "is_from_current_user": m.isFromCurrentUser
+            ]
+        }
+        let body: [String: Any] = [
+            "selected_message": selectedMessage,
+            "conversation_history": historyPayload
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "FirebaseAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: "Server error: \(errorMessage)"])
+        }
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return json?["context"] as? String ?? ""
     }
 }
 

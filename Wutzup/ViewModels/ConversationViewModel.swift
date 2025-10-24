@@ -25,7 +25,6 @@ class ConversationViewModel: ObservableObject {
     @Published var isGeneratingGIF = false
     @Published var generatedGIFURL: String?
     @Published var generatedGIFPrompt: String?
-    @Published var isGeneratingCoreMLAI = false
     @Published var showingResearch = false
     @Published var isConductingResearch = false
     
@@ -35,7 +34,6 @@ class ConversationViewModel: ObservableObject {
     private let authService: AuthenticationService
     private let draftManager: DraftManager
     private let aiService: AIService
-    private let coreMLAIService: AIService
     private let gifService: GIFService
     private let researchService: ResearchService
     private let networkMonitor = NetworkMonitor.shared
@@ -58,13 +56,12 @@ class ConversationViewModel: ObservableObject {
     private var isPaused = false
     private var lastSyncTimestamp: Date?
     
-    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), coreMLAIService: AIService = CoreMLAIService(), gifService: GIFService = FirebaseGIFService(), researchService: ResearchService = FirebaseResearchService(), draftManager: DraftManager = .shared) {
+    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), gifService: GIFService = FirebaseGIFService(), researchService: ResearchService = FirebaseResearchService(), draftManager: DraftManager = .shared) {
         self.conversation = conversation
         self.messageService = messageService
         self._presenceService = presenceService
         self.authService = authService
         self.aiService = aiService
-        self.coreMLAIService = coreMLAIService
         self.gifService = gifService
         self.researchService = researchService
         self.draftManager = draftManager
@@ -609,37 +606,6 @@ class ConversationViewModel: ObservableObject {
     func dismissAISuggestion() {
         showingAISuggestion = false
         aiSuggestion = nil
-    }
-    
-    // MARK: - CoreML AI Response Suggestions
-    
-    func generateCoreMLAIResponseSuggestions() async {
-        guard !messages.isEmpty else {
-            return
-        }
-        
-        // Immediately show the sheet with loading state
-        showingAISuggestion = true
-        isGeneratingCoreMLAI = true
-        
-        do {
-            let userPersonality = authService.currentUser?.personality
-            
-            
-            let suggestion = try await coreMLAIService.generateResponseSuggestions(
-                conversationHistory: messages,
-                userPersonality: userPersonality
-            )
-            
-            
-            aiSuggestion = suggestion
-            
-        } catch {
-            errorMessage = "Failed to generate suggestions: \(error.localizedDescription)"
-            showingAISuggestion = false  // Close sheet on error
-        }
-        
-        isGeneratingCoreMLAI = false
     }
     
     // MARK: - GIF Generation
