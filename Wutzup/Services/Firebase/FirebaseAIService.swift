@@ -130,13 +130,67 @@ class FirebaseAIService: AIService {
             "conversation_history": historyPayload
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw NSError(domain: "FirebaseAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: "Server error: \(errorMessage)"])
+        
+        // DEBUG: Log request
+        print("🔍 [DEBUG] message_context REQUEST:")
+        print("  URL: \(url.absoluteString)")
+        print("  Selected Message: \(selectedMessage)")
+        print("  Conversation History Count: \(conversationHistory.count)")
+        if let bodyData = request.httpBody,
+           let bodyString = String(data: bodyData, encoding: .utf8) {
+            print("  Request Body: \(bodyString)")
         }
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        return json?["context"] as? String ?? ""
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        // DEBUG: Log raw response
+        print("🔍 [DEBUG] message_context RESPONSE:")
+        if let httpResponse = response as? HTTPURLResponse {
+            print("  Status Code: \(httpResponse.statusCode)")
+        }
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("  Raw Response: \(responseString)")
+        }
+        
+        // Parse JSON response
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            print("❌ [DEBUG] Failed to parse JSON response")
+            throw NSError(domain: "FirebaseAIService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON response"])
+        }
+        
+        // DEBUG: Log parsed JSON
+        print("🔍 [DEBUG] Parsed JSON keys: \(json.keys)")
+        if let context = json["context"] as? String {
+            print("  Context length: \(context.count) chars")
+            print("  Context preview: \(context.prefix(100))...")
+        } else {
+            print("  ⚠️ No 'context' key found in response")
+        }
+        if let error = json["error"] as? String {
+            print("  ❌ Error in response: \(error)")
+        }
+        
+        // Check for error response from server
+        if let errorMessage = json["error"] as? String {
+            print("❌ [DEBUG] Server returned error: \(errorMessage)")
+            throw NSError(domain: "FirebaseAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+        }
+        
+        // Check HTTP status
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            let errorMessage = json["error"] as? String ?? "Unknown error"
+            print("❌ [DEBUG] Bad status code: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+            throw NSError(domain: "FirebaseAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+        }
+        
+        // Extract context
+        guard let context = json["context"] as? String, !context.isEmpty else {
+            print("❌ [DEBUG] Context is empty or missing")
+            throw NSError(domain: "FirebaseAIService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Empty context returned from server"])
+        }
+        
+        print("✅ [DEBUG] Successfully extracted context (\(context.count) chars)")
+        return context
     }
 }
 

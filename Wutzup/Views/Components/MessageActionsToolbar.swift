@@ -55,6 +55,8 @@ struct MessageActionsToolbar: View {
     @State private var showingTranslation = false
     @State private var contextText: String = ""
     @State private var showingContext = false
+    @State private var showingContextError = false
+    @State private var contextErrorMessage: String = ""
     
     var body: some View {
         VStack(spacing: 0) {
@@ -140,6 +142,11 @@ struct MessageActionsToolbar: View {
             } else {
                 Text("Translation failed. Please try again later.")
             }
+        }
+        .alert("Context Failed", isPresented: $showingContextError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(contextErrorMessage)
         }
         .sheet(isPresented: $showingTranslation) {
             TranslationResultView(
@@ -289,25 +296,51 @@ struct MessageActionsToolbar: View {
     
     private func fetchContext() {
         isLoadingContext = true
+        print("🔍 [DEBUG] MessageActionsToolbar: Starting context fetch...")
+        print("  Selected message: \"\(messageText)\"")
+        print("  Conversation history count: \(conversationHistory?.count ?? 0)")
+        
         Task { @MainActor in
             do {
                 let service = FirebaseAIService()
                 let history = conversationHistory ?? []
+                print("🔍 [DEBUG] MessageActionsToolbar: Calling getMessageContext...")
                 let analysis = try await service.getMessageContext(selectedMessage: messageText, conversationHistory: history)
+                
+                print("🔍 [DEBUG] MessageActionsToolbar: Received analysis")
+                print("  Analysis length: \(analysis.count) chars")
+                print("  Analysis preview: \(analysis.prefix(200))...")
+                
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isLoadingContext = false
                 }
+                
+                // Check if the analysis is empty
+                if analysis.isEmpty {
+                    print("❌ [DEBUG] MessageActionsToolbar: Analysis is EMPTY!")
+                    contextErrorMessage = "No context could be generated. Please try again."
+                    showingContextError = true
+                    return
+                }
+                
+                print("✅ [DEBUG] MessageActionsToolbar: Calling onContextComplete with \(analysis.count) chars")
                 // Pass the context result to parent
                 onContextComplete(analysis)
+                
                 // Auto-dismiss toolbar after showing context
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    print("🔍 [DEBUG] MessageActionsToolbar: Dismissing toolbar")
                     onDismiss()
                 }
             } catch {
-                print("Context error: \(error.localizedDescription)")
+                print("❌ [DEBUG] MessageActionsToolbar: Context error caught!")
+                print("  Error: \(error)")
+                print("  Localized description: \(error.localizedDescription)")
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isLoadingContext = false
                 }
+                contextErrorMessage = "Failed to fetch context: \(error.localizedDescription)"
+                showingContextError = true
             }
         }
     }

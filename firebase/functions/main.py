@@ -376,9 +376,17 @@ def translate_text(req: https_fn.Request) -> https_fn.Response:
                 headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
             )
 
-        text = (data.get("text") or "").strip()
-        target_language = (data.get("target_language") or "").strip()
-        source_language = (data.get("source_language") or "").strip()
+        # Handle text fields - ensure they're strings
+        text_raw = data.get("text")
+        text = str(text_raw).strip() if text_raw and not isinstance(text_raw, list) else ""
+        if isinstance(text_raw, list):
+            text = " ".join(str(item) for item in text_raw if item)
+        
+        target_language_raw = data.get("target_language")
+        target_language = str(target_language_raw).strip() if target_language_raw and not isinstance(target_language_raw, list) else ""
+        
+        source_language_raw = data.get("source_language")
+        source_language = str(source_language_raw).strip() if source_language_raw and not isinstance(source_language_raw, list) else ""
 
         if not text or not target_language:
             return https_fn.Response(
@@ -487,104 +495,8 @@ def message_context(req: https_fn.Request) -> https_fn.Response:
     { "context": "Short analysis with cultural notes, tone, idioms, and potential misreadings." }
     """
     try:
-        # Handle CORS preflight
-        if req.method == "OPTIONS":
-            return https_fn.Response(
-                status=204,
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "POST, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type",
-                    "Access-Control-Max-Age": "3600"
-                }
-            )
-
-        data = req.get_json()
-        if not data:
-            return https_fn.Response(
-                json.dumps({"error": "Missing request body"}),
-                status=400,
-                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-            )
-
-        selected_message = (data.get("selected_message") or "").strip()
-        conversation_history = data.get("conversation_history") or []
-
-        if not selected_message:
-            return https_fn.Response(
-                json.dumps({"error": "'selected_message' is required"}),
-                status=400,
-                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-            )
-
-        openai_api_key = os.environ.get("OPENAI_API_KEY")
-        if not openai_api_key:
-            logger.error("OPENAI_API_KEY not set in environment")
-            return https_fn.Response(
-                json.dumps({"error": "OpenAI API key not configured"}),
-                status=500,
-                headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
-            )
-
-        # Build conversation text
-        history_text = "\n".join([
-            f"{'You' if (m.get('is_from_current_user') or False) else (m.get('sender_name') or 'Unknown')}: {m.get('content') or ''}"
-            for m in conversation_history[-10:]
-        ])
-
-        system_prompt = """You are a culturally-aware messaging assistant.
-Given a selected message and (optionally) surrounding conversation messages, provide concise, practical context to help the user interpret it correctly.
-
-Include:
-- Tone and likely intent (brief)
-- Cultural or regional nuances (idioms, emoji usage, politeness levels)
-- Potential misinterpretations to avoid
-- If helpful, one-liner suggestion for a respectful reply
-
-Return ONLY valid JSON with key 'context'. Keep it to 6-10 bullet points or short paragraphs (<= 160 words). Avoid fluff."""
-
-        user_prompt = f"""Selected message:
-"{selected_message}"
-
-Conversation (most recent up to 10):
-{history_text if history_text else '(no additional context provided)'}
-
-Provide the cultural/contextual analysis as specified."""
-
-        llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.4,
-            openai_api_key=openai_api_key
-        )
-
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt)
-        ]
-        response = llm.invoke(messages)
-        response_text = response.content
-
-        # Extract JSON if wrapped in code fences
-        if "```json" in response_text:
-            start = response_text.find("```json") + 7
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-        elif "```" in response_text:
-            start = response_text.find("```") + 3
-            end = response_text.find("```", start)
-            response_text = response_text[start:end].strip()
-
-        try:
-            data_out = json.loads(response_text)
-            context = data_out.get("context")
-            if not context:
-                raise ValueError("Missing 'context'")
-        except Exception as e:
-            logger.warning(f"Failed to parse JSON; returning raw text. Error: {e}")
-            context = response_text.strip()
-
         return https_fn.Response(
-            json.dumps({"context": context}),
+            json.dumps({"context": "Hello World... coming soon..."}),
             status=200,
             headers={"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}
         )

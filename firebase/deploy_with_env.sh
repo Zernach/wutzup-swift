@@ -42,7 +42,7 @@ echo ""
 
 # The .env file will be loaded by python-dotenv at runtime
 echo -e "${YELLOW}Deploying functions (with .env file)...${NC}"
-firebase deploy --only functions:generate_response_suggestions,functions:conduct_research,functions:generate_gif --force
+firebase deploy --only functions:generate_response_suggestions,functions:conduct_research,functions:generate_gif,functions:message_context,functions:translate_text --force
 
 echo ""
 echo -e "${GREEN}✓ Deployment complete!${NC}"
@@ -51,4 +51,6 @@ echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Test AI responses with: bash test_ai_response.sh"
 echo "2. Test research function in the iOS app"
 echo "3. Test GIF generation in the iOS app"
+echo "4. Test message context feature in the iOS app"
+echo "5. Test translation feature in the iOS app"
 

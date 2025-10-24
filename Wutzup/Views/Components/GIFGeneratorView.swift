@@ -93,7 +93,7 @@ struct GIFGeneratorView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 InfoRow(icon: "sparkles", text: "AI generates a unique image")
                                 InfoRow(icon: "film", text: "Converted to GIF format")
-                                InfoRow(icon: "clock", text: "Takes about 5-10 seconds")
+                                InfoRow(icon: "clock", text: "Takes about 30 seconds")
                             }
                         }
                         .padding(16)
@@ -198,7 +198,7 @@ struct GIFGeneratorView: View {
                                 .font(.headline)
                                 .foregroundColor(AppConstants.Colors.textPrimary)
                             
-                            Text("This may take 5-10 seconds")
+                            Text("This usually takes 30-40 seconds")
                                 .font(.subheadline)
                                 .foregroundColor(AppConstants.Colors.textSecondary)
                         }

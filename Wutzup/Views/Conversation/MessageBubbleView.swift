@@ -47,29 +47,13 @@ struct MessageBubbleView: View {
                             VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 8) {
                                 // Original message content
                                 if let translatedText = translatedText, let translationLanguage = translationLanguage {
-                                    // Show original and translation side-by-side
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        // Original message
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("Original")
-                                                .font(.caption2)
-                                                .foregroundColor(message.isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textSecondary)
-                                            Text(displayedMessageContent)
-                                                .foregroundColor(message.isFromCurrentUser ? .white : AppConstants.Colors.textPrimary)
-                                        }
-                                        
-                                        Divider()
-                                            .background(message.isFromCurrentUser ? Color.white.opacity(0.3) : AppConstants.Colors.border)
-                                        
-                                        // Translation
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(translationLanguage)
-                                                .font(.caption2)
-                                                .foregroundColor(message.isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textSecondary)
-                                            Text(translatedText)
-                                                .foregroundColor(message.isFromCurrentUser ? .white : AppConstants.Colors.textPrimary)
-                                        }
-                                    }
+                                    // Show original and translation side-by-side with paragraph alignment
+                                    AlignedTranslationView(
+                                        originalText: displayedMessageContent,
+                                        translatedText: translatedText,
+                                        translationLanguage: translationLanguage,
+                                        isFromCurrentUser: message.isFromCurrentUser
+                                    )
                                 } else {
                                     Text(displayedMessageContent)
                                         .foregroundColor(message.isFromCurrentUser ? .white : AppConstants.Colors.textPrimary)
@@ -97,7 +81,7 @@ struct MessageBubbleView: View {
                                 }
                                 
                                 // Show context below if available
-                                if let contextText = contextText {
+                                if let contextText = contextText, !contextText.isEmpty {
                                     Divider()
                                         .background(message.isFromCurrentUser ? Color.white.opacity(0.3) : AppConstants.Colors.border)
                                     
@@ -186,8 +170,13 @@ struct MessageBubbleView: View {
                                 }
                             },
                             onContextComplete: { contextText in
+                                print("🔍 [DEBUG] MessageBubbleView: onContextComplete called")
+                                print("  Context text length: \(contextText.count) chars")
+                                print("  Context preview: \(contextText.prefix(200))...")
+                                print("  Is empty: \(contextText.isEmpty)")
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     self.contextText = contextText
+                                    print("✅ [DEBUG] MessageBubbleView: State updated with context")
                                 }
                             }
                         )
@@ -215,6 +204,28 @@ struct MessageBubbleView: View {
         }
         .onDisappear {
             onDisappear?()
+        }
+        .onChange(of: contextText) { oldValue, newValue in
+            print("🔍 [DEBUG] MessageBubbleView: contextText state changed")
+            print("  Old value: \(oldValue?.prefix(50) ?? "nil")")
+            print("  New value: \(newValue?.prefix(50) ?? "nil")")
+            print("  New value is empty: \(newValue?.isEmpty ?? true)")
+            print("  Will display context: \(newValue != nil && !(newValue?.isEmpty ?? true))")
+            
+            // Auto-expand "Show more" when context finishes loading
+            if newValue != nil && !newValue!.isEmpty && isResearchResult && !isResearchExpanded {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isResearchExpanded = true
+                }
+            }
+        }
+        .onChange(of: translatedText) { oldValue, newValue in
+            // Auto-expand "Show more" when translation finishes loading
+            if newValue != nil && !newValue!.isEmpty && isResearchResult && !isResearchExpanded {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isResearchExpanded = true
+                }
+            }
         }
         .onLongPressGesture {
             // Only show details for group chats and sent messages
@@ -308,6 +319,116 @@ struct MessageBubbleView: View {
                     .foregroundColor(AppConstants.Colors.destructive)
             }
         }
+    }
+}
+
+// MARK: - Aligned Translation View
+
+/// A view that displays original and translated text side-by-side with paragraph-level alignment
+struct AlignedTranslationView: View {
+    let originalText: String
+    let translatedText: String
+    let translationLanguage: String
+    let isFromCurrentUser: Bool
+    
+    @State private var originalHeights: [Int: CGFloat] = [:]
+    @State private var translatedHeights: [Int: CGFloat] = [:]
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // Left side: Original text column
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Original")
+                    .font(.caption2)
+                    .foregroundColor(isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textSecondary)
+                    .padding(.bottom, 4)
+                
+                AlignedParagraphColumn(
+                    paragraphs: splitIntoParagraphs(originalText),
+                    myHeights: $originalHeights,
+                    otherHeights: translatedHeights,
+                    textColor: isFromCurrentUser ? .white : AppConstants.Colors.textPrimary
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Divider()
+                .background(isFromCurrentUser ? Color.white.opacity(0.3) : AppConstants.Colors.border)
+            
+            // Right side: Translation column
+            VStack(alignment: .leading, spacing: 0) {
+                Text(translationLanguage)
+                    .font(.caption2)
+                    .foregroundColor(isFromCurrentUser ? .white.opacity(0.7) : AppConstants.Colors.textSecondary)
+                    .padding(.bottom, 4)
+                
+                AlignedParagraphColumn(
+                    paragraphs: splitIntoParagraphs(translatedText),
+                    myHeights: $translatedHeights,
+                    otherHeights: originalHeights,
+                    textColor: isFromCurrentUser ? .white : AppConstants.Colors.textPrimary
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+    
+    private func splitIntoParagraphs(_ text: String) -> [String] {
+        let paragraphs = text.components(separatedBy: "\n")
+        return paragraphs
+    }
+}
+
+/// A column that displays paragraphs with proper alignment
+struct AlignedParagraphColumn: View {
+    let paragraphs: [String]
+    @Binding var myHeights: [Int: CGFloat]
+    let otherHeights: [Int: CGFloat]
+    let textColor: Color
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(paragraph)
+                        .foregroundColor(textColor)
+                        .background(
+                            GeometryReader { geometry in
+                                Color.clear.preference(
+                                    key: ParagraphHeightPreferenceKey.self,
+                                    value: [index: geometry.size.height]
+                                )
+                            }
+                        )
+                    
+                    // Add spacing to match the other column's height
+                    if let myHeight = myHeights[index],
+                       let otherHeight = otherHeights[index],
+                       otherHeight > myHeight {
+                        Spacer()
+                            .frame(height: otherHeight - myHeight)
+                    }
+                    
+                    // Add paragraph spacing (except for last paragraph)
+                    if index < paragraphs.count - 1 {
+                        Spacer()
+                            .frame(height: 12)
+                    }
+                }
+            }
+        }
+        .onPreferenceChange(ParagraphHeightPreferenceKey.self) { heights in
+            myHeights = heights
+        }
+    }
+}
+
+/// Preference key for tracking paragraph heights
+struct ParagraphHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: [Int: CGFloat] = [:]
+    
+    static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
+        value.merge(nextValue()) { $1 }
     }
 }
 
