@@ -39,6 +39,9 @@ struct LanguageTutorView: View {
         ZStack {
             AppConstants.Colors.background
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
             VStack(spacing: 0) {
                 // Info Banner
@@ -244,6 +247,10 @@ struct LanguageTutorView: View {
                 }
             }
         }
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

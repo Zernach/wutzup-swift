@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import Combine
 
 struct ChatListView: View {
@@ -91,6 +92,7 @@ struct ChatListView: View {
                     currentUserId: appState.currentUser?.id,
                     presenceService: appState.presenceService,
                     tutorFilter: false,
+                    modelContainer: appState.modelContainer,
                     createOrFetchConversation: { @MainActor user in
                         // Get current user
                         guard let currentUser = appState.currentUser else {
@@ -115,6 +117,7 @@ struct ChatListView: View {
                     currentUserId: appState.currentUser?.id,
                     chatListViewModel: viewModel,
                     tutorFilter: false,
+                    modelContainer: appState.modelContainer,
                     onGroupCreated: { conversation in
                         navigateToConversation(conversation)
                     }
@@ -129,6 +132,7 @@ struct ChatListView: View {
                     currentUserId: appState.currentUser?.id,
                     presenceService: appState.presenceService,
                     tutorFilter: true,
+                    modelContainer: appState.modelContainer,
                     createOrFetchConversation: { @MainActor user in
                         // Get current user
                         guard let currentUser = appState.currentUser else {
@@ -153,6 +157,7 @@ struct ChatListView: View {
                     currentUserId: appState.currentUser?.id,
                     chatListViewModel: viewModel,
                     tutorFilter: true,
+                    modelContainer: appState.modelContainer,
                     onGroupCreated: { conversation in
                         navigateToConversation(conversation)
                     }
@@ -284,8 +289,11 @@ struct ConversationRowButtonStyle: ButtonStyle {
         authService: previewAuth,
         presenceService: previewPresence
     )
+    // Create a minimal ModelContainer for preview
+    let container = try! ModelContainer(for: UserModel.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    let previewState = AppState(modelContainer: container)
     return ChatListView(viewModel: viewModel)
-        .environmentObject(AppState())
+        .environmentObject(previewState)
 }
 
 private struct NewChatRoute: Hashable {}
@@ -357,6 +365,8 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
     
     func deleteAccount() async throws { }
+    
+    func resetPassword(email: String) async throws { }
 }
 
 private final class PreviewPresenceServiceForChat: PresenceService {

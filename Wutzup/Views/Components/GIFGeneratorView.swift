@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import Combine
 
 struct GIFGeneratorView: View {
@@ -16,6 +17,12 @@ struct GIFGeneratorView: View {
     var body: some View {
         NavigationStack {
             ZStack {
+                AppConstants.Colors.background
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        hideKeyboard()
+                    }
+                
                 VStack(spacing: 24) {
                     // Header
                     VStack(spacing: 12) {
@@ -223,6 +230,10 @@ struct GIFGeneratorView: View {
             }
         }
     }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
 }
 
 private struct InfoRow: View {
@@ -247,6 +258,7 @@ private struct InfoRow: View {
     let previewService = PreviewMessageService()
     let previewPresence = PreviewPresenceService()
     let previewAuth = PreviewAuthenticationService()
+    let container = try! ModelContainer(for: UserModel.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
     let viewModel = ConversationViewModel(
         conversation: Conversation(
             participantIds: ["1", "2"],
@@ -255,10 +267,11 @@ private struct InfoRow: View {
         ),
         messageService: previewService,
         presenceService: previewPresence,
-        authService: previewAuth
+        authService: previewAuth,
+        modelContainer: container
     )
     
-    return GIFGeneratorView(viewModel: viewModel)
+    GIFGeneratorView(viewModel: viewModel)
 }
 
 // Preview services for GIFGeneratorView
@@ -313,5 +326,6 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func logout() async throws { }
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
     func deleteAccount() async throws { }
+    func resetPassword(email: String) async throws { }
 }
 

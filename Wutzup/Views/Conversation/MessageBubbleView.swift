@@ -170,13 +170,8 @@ struct MessageBubbleView: View {
                                 }
                             },
                             onContextComplete: { contextText in
-                                print("🔍 [DEBUG] MessageBubbleView: onContextComplete called")
-                                print("  Context text length: \(contextText.count) chars")
-                                print("  Context preview: \(contextText.prefix(200))...")
-                                print("  Is empty: \(contextText.isEmpty)")
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     self.contextText = contextText
-                                    print("✅ [DEBUG] MessageBubbleView: State updated with context")
                                 }
                             }
                         )
@@ -206,12 +201,6 @@ struct MessageBubbleView: View {
             onDisappear?()
         }
         .onChange(of: contextText) { oldValue, newValue in
-            print("🔍 [DEBUG] MessageBubbleView: contextText state changed")
-            print("  Old value: \(oldValue?.prefix(50) ?? "nil")")
-            print("  New value: \(newValue?.prefix(50) ?? "nil")")
-            print("  New value is empty: \(newValue?.isEmpty ?? true)")
-            print("  Will display context: \(newValue != nil && !(newValue?.isEmpty ?? true))")
-            
             // Auto-expand "Show more" when context finishes loading
             if newValue != nil && !newValue!.isEmpty && isResearchResult && !isResearchExpanded {
                 withAnimation(.easeInOut(duration: 0.3)) {

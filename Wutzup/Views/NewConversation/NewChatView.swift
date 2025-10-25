@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Foundation
+import SwiftData
 
 struct NewChatView: View {
     @StateObject private var userPickerViewModel: UserPickerViewModel
@@ -24,13 +25,15 @@ struct NewChatView: View {
          currentUserId: String?,
          presenceService: PresenceService?,
          tutorFilter: Bool? = false,
+         modelContainer: ModelContainer? = nil,
          createOrFetchConversation: @escaping @MainActor (User) async -> Conversation?,
          onConversationCreated: @escaping (Conversation) -> Void) {
         _userPickerViewModel = StateObject(
             wrappedValue: UserPickerViewModel(
                 userService: userService,
                 currentUserId: currentUserId,
-                tutorFilter: tutorFilter
+                tutorFilter: tutorFilter,
+                modelContainer: modelContainer
             )
         )
         self.createOrFetchConversation = createOrFetchConversation

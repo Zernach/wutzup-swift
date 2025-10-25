@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
@@ -36,7 +37,9 @@ struct ContentView: View {
 }
 
 #Preview {
-    let previewState = AppState()
+    // Create a minimal ModelContainer for preview
+    let container = try! ModelContainer(for: UserModel.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    let previewState = AppState(modelContainer: container)
     return ContentView()
         .environmentObject(previewState)
 }

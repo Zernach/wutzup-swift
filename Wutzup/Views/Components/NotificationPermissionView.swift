@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct NotificationPermissionView: View {
     @EnvironmentObject var appState: AppState
@@ -122,7 +123,10 @@ struct PermissionBenefitRow: View {
 }
 
 #Preview {
-    NotificationPermissionView()
-        .environmentObject(AppState())
+    // Create a minimal ModelContainer for preview
+    let container = try! ModelContainer(for: UserModel.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    let previewState = AppState(modelContainer: container)
+    return NotificationPermissionView()
+        .environmentObject(previewState)
 }
 

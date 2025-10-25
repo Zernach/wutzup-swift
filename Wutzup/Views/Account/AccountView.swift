@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import UserNotifications
 import PhotosUI
 
@@ -71,6 +72,9 @@ struct AccountView: View {
         ZStack {
             AppConstants.Colors.background
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
             ScrollView {
                 VStack(spacing: 0) {
@@ -755,12 +759,19 @@ struct AccountView: View {
             }
         }
     }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
 }
 
 #Preview {
-    NavigationStack {
+    // Create a minimal ModelContainer for preview
+    let container = try! ModelContainer(for: UserModel.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    let previewState = AppState(modelContainer: container)
+    return NavigationStack {
         AccountView()
-            .environmentObject(AppState())
+            .environmentObject(previewState)
     }
 }
 

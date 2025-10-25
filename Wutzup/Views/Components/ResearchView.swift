@@ -16,7 +16,14 @@ struct ResearchView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
+            ZStack {
+                AppConstants.Colors.background
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        hideKeyboard()
+                    }
+                
+                VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 12) {
                     ZStack {
@@ -117,8 +124,9 @@ struct ResearchView: View {
                 .disabled(prompt.isEmpty || isResearching)
                 .padding(.horizontal)
                 .padding(.bottom, 32)
+                }
+                .background(AppConstants.Colors.background)
             }
-            .background(AppConstants.Colors.background)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -129,6 +137,10 @@ struct ResearchView: View {
                 }
             }
         }
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

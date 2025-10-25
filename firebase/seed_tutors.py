@@ -22,8 +22,6 @@ try:
     from firebase_admin import credentials, firestore, auth
     from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 except ImportError:
-    print("Error: firebase-admin package not found.")
-    print("Install with: pip install firebase-admin")
     sys.exit(1)
 
 
@@ -212,7 +210,6 @@ class TutorSeeder:
         if self.use_emulator:
             # Use emulator
             os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8080"
-            print("🔧 Using Firestore Emulator at localhost:8080")
             
             if not firebase_admin._apps:
                 firebase_admin.initialize_app()
@@ -221,7 +218,6 @@ class TutorSeeder:
             if not project_id:
                 raise ValueError("project_id required when not using emulator")
             
-            print(f"🔥 Connecting to Firestore project: {project_id}")
             
             if not firebase_admin._apps:
                 cred = credentials.ApplicationDefault()
@@ -230,7 +226,6 @@ class TutorSeeder:
                 })
         
         self.db = firestore.client()
-        print("✅ Firestore client initialized")
     
     def create_auth_user(self, email: str, display_name: str) -> str:
         """
@@ -247,7 +242,6 @@ class TutorSeeder:
             # Check if user already exists
             try:
                 existing_user = auth.get_user_by_email(email)
-                print(f"  ℹ️  User already exists for {email}, using existing UID: {existing_user.uid}")
                 return existing_user.uid
             except auth.UserNotFoundError:
                 pass
@@ -260,15 +254,12 @@ class TutorSeeder:
                 password=str(uuid.uuid4()),  # Random password (tutors login via service)
                 disabled=False
             )
-            print(f"  ✓ Created Auth user: {display_name} ({user.uid})")
             return user.uid
             
         except Exception as e:
-            print(f"  ⚠️  Could not create Auth user for {email}: {e}")
             # Generate a deterministic UID from email for Firestore-only mode
             import hashlib
             uid = "tutor_" + hashlib.md5(email.encode()).hexdigest()[:20]
-            print(f"  ℹ️  Using Firestore-only mode with UID: {uid}")
             return uid
     
     def create_tutors(self, skip_auth: bool = False) -> List[str]:
@@ -281,7 +272,6 @@ class TutorSeeder:
         Returns:
             List of created tutor user IDs
         """
-        print("\n👨‍🏫 Creating international tutors...")
         
         tutor_ids = []
         
@@ -293,7 +283,6 @@ class TutorSeeder:
             if skip_auth:
                 import hashlib
                 user_id = "tutor_" + hashlib.md5(email.encode()).hexdigest()[:20]
-                print(f"  ℹ️  Skipping Auth, using UID: {user_id} for {display_name}")
             else:
                 user_id = self.create_auth_user(email, display_name)
             
@@ -316,15 +305,12 @@ class TutorSeeder:
             tutor_ids.append(user_id)
             
             lang_code = tutor_data["primaryLanguageCode"].upper()
-            print(f"  ✓ Created tutor: {display_name} [{lang_code}]")
         
         self.created_tutors = tutor_ids
-        print(f"\n✅ Created {len(tutor_ids)} tutors in Firestore")
         return tutor_ids
     
     def create_tutor_presence(self):
         """Create presence documents for all tutors (all online)."""
-        print("\n👁️  Setting up tutor presence...")
         
         for tutor_id in self.created_tutors:
             presence_data = {
@@ -335,7 +321,6 @@ class TutorSeeder:
             
             self.db.collection("presence").document(tutor_id).set(presence_data)
         
-        print(f"✅ Set {len(self.created_tutors)} tutors as online")
     
     def seed_tutors(self, skip_auth: bool = False):
         """
@@ -344,9 +329,6 @@ class TutorSeeder:
         Args:
             skip_auth: If True, skip Firebase Auth creation (Firestore only)
         """
-        print("\n" + "="*70)
-        print("🌱 Starting Tutor Seeding for Wutzup")
-        print("="*70)
         
         # Create tutors
         self.create_tutors(skip_auth=skip_auth)
@@ -354,25 +336,7 @@ class TutorSeeder:
         # Set up presence
         self.create_tutor_presence()
         
-        print("\n" + "="*70)
-        print("✅ Tutor seeding completed successfully!")
-        print("="*70)
-        print("\n📊 Summary:")
-        print(f"  - Total Tutors: {len(self.created_tutors)}")
-        print(f"  - Languages: Spanish (3), French (2), German, Italian, Portuguese,")
-        print(f"              Japanese, Mandarin, Russian, Polish, Greek, Turkish,")
-        print(f"              Swedish, Danish, Norwegian, Czech, Hungarian,")
-        print(f"              Vietnamese, Irish Gaelic")
-        print(f"  - All tutors marked with isTutor: true")
-        print(f"  - All tutors have unique personalities")
-        print(f"  - All tutors are online and ready to chat!")
-        print("\n💡 Users can now start conversations with language tutors!")
         
-        # Print sample tutors
-        print("\n📝 Sample Tutors:")
-        for i, tutor_data in enumerate(TUTORS_DATA[:3], 1):
-            print(f"\n  {i}. {tutor_data['displayName']} ({tutor_data['primaryLanguageCode'].upper()})")
-            print(f"     {tutor_data['personality'][:80]}...")
 
 
 def main():
@@ -411,7 +375,6 @@ def main():
         seeder.seed_tutors(skip_auth=args.skip_auth)
         
     except Exception as e:
-        print(f"\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

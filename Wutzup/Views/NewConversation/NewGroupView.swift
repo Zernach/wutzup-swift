@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import SwiftData
 
 struct NewGroupView: View {
     @StateObject private var userPickerViewModel: UserPickerViewModel
@@ -23,12 +24,14 @@ struct NewGroupView: View {
          currentUserId: String?,
          chatListViewModel: ChatListViewModel,
          tutorFilter: Bool? = false,
+         modelContainer: ModelContainer? = nil,
          onGroupCreated: @escaping (Conversation) -> Void) {
         _userPickerViewModel = StateObject(
             wrappedValue: UserPickerViewModel(
                 userService: userService,
                 currentUserId: currentUserId,
-                tutorFilter: tutorFilter
+                tutorFilter: tutorFilter,
+                modelContainer: modelContainer
             )
         )
         self.chatListViewModel = chatListViewModel
@@ -51,6 +54,9 @@ struct NewGroupView: View {
         ZStack {
             AppConstants.Colors.background
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
             Form {
                 Section("Group Name") {
@@ -211,6 +217,10 @@ struct NewGroupView: View {
             }
         }
     }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
 }
 
 #Preview {
@@ -253,6 +263,10 @@ private final class PreviewAuthService: AuthenticationService {
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws {}
     
     func deleteAccount() async throws {}
+    
+    func resetPassword(email: String) async throws {
+        // No-op for preview
+    }
 }
 
 private final class PreviewChatService: ChatService {

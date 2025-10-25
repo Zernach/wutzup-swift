@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import Combine
 import UserNotifications
+import SwiftData
 
 @MainActor
 class AppState: ObservableObject {
@@ -26,6 +27,7 @@ class AppState: ObservableObject {
     let presenceService: FirebasePresenceService
     let notificationService: FirebaseNotificationService
     let aiService: FirebaseAIService
+    let tutorChatService: FirebaseTutorChatService
     
     // Network and offline management
     let networkMonitor = NetworkMonitor.shared
@@ -37,6 +39,9 @@ class AppState: ObservableObject {
     // Shared view models
     let chatListViewModel: ChatListViewModel
     
+    // SwiftData container
+    let modelContainer: ModelContainer
+    
     private var cancellables = Set<AnyCancellable>()
     private var hasRequestedNotificationPermission = false
     private var networkObserver: Any?
@@ -44,7 +49,8 @@ class AppState: ObservableObject {
     // 🔥 FIX: Store pending FCM token to handle race condition
     private var pendingFCMToken: String?
     
-    init() {
+    init(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
         // Initialize services
         self.authService = FirebaseAuthService()
         self.messageService = FirebaseMessageService()
@@ -53,6 +59,7 @@ class AppState: ObservableObject {
         self.presenceService = FirebasePresenceService()
         self.notificationService = FirebaseNotificationService()
         self.aiService = FirebaseAIService()
+        self.tutorChatService = FirebaseTutorChatService()
         self.chatListViewModel = ChatListViewModel(
             chatService: chatService,
             authService: authService,
@@ -336,7 +343,10 @@ class AppState: ObservableObject {
             conversation: conversation,
             messageService: messageService,
             presenceService: presenceService,
-            authService: authService
+            authService: authService,
+            modelContainer: modelContainer,
+            tutorChatService: tutorChatService,
+            userService: userService
         )
     }
 }

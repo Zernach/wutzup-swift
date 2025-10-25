@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import Combine
 
 struct ConversationView: View {
@@ -256,6 +257,8 @@ struct ConversationView: View {
         let previewPresence = PreviewPresenceService()
         let previewAuth = PreviewAuthenticationService()
         let previewUser = PreviewUserServiceForConversation()
+        // Create a minimal ModelContainer for preview
+        let container = try! ModelContainer(for: UserModel.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let viewModel = ConversationViewModel(
             conversation: Conversation(
                 participantIds: ["1", "2", "3"],
@@ -265,10 +268,12 @@ struct ConversationView: View {
             ),
             messageService: previewService,
             presenceService: previewPresence,
-            authService: previewAuth
+            authService: previewAuth,
+            modelContainer: container
         )
+        let previewState = AppState(modelContainer: container)
         ConversationView(viewModel: viewModel, userService: previewUser)
-            .environmentObject(AppState())
+            .environmentObject(previewState)
     }
 }
 
@@ -372,6 +377,8 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
     
     func deleteAccount() async throws { }
+    
+    func resetPassword(email: String) async throws { }
 }
 
 private final class PreviewUserServiceForConversation: UserService {

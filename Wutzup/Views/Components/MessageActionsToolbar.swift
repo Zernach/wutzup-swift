@@ -285,7 +285,6 @@ struct MessageActionsToolbar: View {
                     onDismiss()
                 }
             } catch {
-                print("Translation error: \(error.localizedDescription)")
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isTranslating = false
                 }
@@ -296,20 +295,13 @@ struct MessageActionsToolbar: View {
     
     private func fetchContext() {
         isLoadingContext = true
-        print("🔍 [DEBUG] MessageActionsToolbar: Starting context fetch...")
-        print("  Selected message: \"\(messageText)\"")
-        print("  Conversation history count: \(conversationHistory?.count ?? 0)")
         
         Task { @MainActor in
             do {
                 let service = FirebaseAIService()
                 let history = conversationHistory ?? []
-                print("🔍 [DEBUG] MessageActionsToolbar: Calling getMessageContext...")
                 let analysis = try await service.getMessageContext(selectedMessage: messageText, conversationHistory: history)
                 
-                print("🔍 [DEBUG] MessageActionsToolbar: Received analysis")
-                print("  Analysis length: \(analysis.count) chars")
-                print("  Analysis preview: \(analysis.prefix(200))...")
                 
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isLoadingContext = false
@@ -317,25 +309,19 @@ struct MessageActionsToolbar: View {
                 
                 // Check if the analysis is empty
                 if analysis.isEmpty {
-                    print("❌ [DEBUG] MessageActionsToolbar: Analysis is EMPTY!")
                     contextErrorMessage = "No context could be generated. Please try again."
                     showingContextError = true
                     return
                 }
                 
-                print("✅ [DEBUG] MessageActionsToolbar: Calling onContextComplete with \(analysis.count) chars")
                 // Pass the context result to parent
                 onContextComplete(analysis)
                 
                 // Auto-dismiss toolbar after showing context
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    print("🔍 [DEBUG] MessageActionsToolbar: Dismissing toolbar")
                     onDismiss()
                 }
             } catch {
-                print("❌ [DEBUG] MessageActionsToolbar: Context error caught!")
-                print("  Error: \(error)")
-                print("  Localized description: \(error.localizedDescription)")
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isLoadingContext = false
                 }

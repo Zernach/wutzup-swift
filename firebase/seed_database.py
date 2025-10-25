@@ -23,8 +23,6 @@ try:
     from firebase_admin import credentials, firestore, auth
     from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 except ImportError:
-    print("Error: firebase-admin package not found.")
-    print("Install with: pip install firebase-admin")
     sys.exit(1)
 
 
@@ -49,7 +47,6 @@ class FirestoreSeeder:
         if self.use_emulator:
             # Use emulator
             os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8080"
-            print("🔧 Using Firestore Emulator at localhost:8080")
             
             if not firebase_admin._apps:
                 firebase_admin.initialize_app()
@@ -58,7 +55,6 @@ class FirestoreSeeder:
             if not project_id:
                 raise ValueError("project_id required when not using emulator")
             
-            print(f"🔥 Connecting to Firestore project: {project_id}")
             
             if not firebase_admin._apps:
                 cred = credentials.ApplicationDefault()
@@ -67,11 +63,9 @@ class FirestoreSeeder:
                 })
         
         self.db = firestore.client()
-        print("✅ Firestore client initialized")
         
     def clear_collections(self):
         """Clear existing test data (use with caution!)."""
-        print("\n⚠️  Clearing existing collections...")
         
         collections = ['users', 'conversations', 'presence', 'typing']
         
@@ -85,9 +79,7 @@ class FirestoreSeeder:
                 count += 1
             
             if count > 0:
-                print(f"  Deleted {count} documents from {collection_name}")
         
-        print("✅ Collections cleared")
         
     def fetch_existing_users(self) -> List[Dict[str, Any]]:
         """
@@ -96,7 +88,6 @@ class FirestoreSeeder:
         Returns:
             List of user data dictionaries
         """
-        print("\n👥 Fetching existing Firebase Auth users...")
         
         try:
             # List all users from Firebase Auth
@@ -111,22 +102,17 @@ class FirestoreSeeder:
                         "displayName": user.display_name or user.email.split('@')[0] if user.email else f"User {user.uid[:8]}"
                     }
                     users.append(user_data)
-                    print(f"  ✓ Found user: {user_data['displayName']} ({user_data['id']})")
                 
                 # Get next page
                 page = page.get_next_page()
             
             if not users:
-                print("  ⚠️  No existing Firebase Auth users found!")
-                print("  💡 Please create some users first using the iOS app or Firebase Console")
                 return []
             
             self.test_users = [u["id"] for u in users]
-            print(f"✅ Found {len(users)} existing users")
             return users
             
         except Exception as e:
-            print(f"❌ Error fetching users: {e}")
             return []
     
     def ensure_users_in_firestore(self, users: List[Dict[str, Any]]):
@@ -136,7 +122,6 @@ class FirestoreSeeder:
         Args:
             users: List of user data from Firebase Auth
         """
-        print("\n📝 Ensuring users exist in Firestore...")
         
         for user_data in users:
             user_id = user_data["id"]
@@ -153,11 +138,8 @@ class FirestoreSeeder:
                     "createdAt": SERVER_TIMESTAMP
                 }
                 user_ref.set(firestore_user)
-                print(f"  ✓ Created Firestore doc for: {user_data['displayName']}")
             else:
-                print(f"  ✓ User already exists: {user_data['displayName']}")
         
-        print("✅ All users synced to Firestore")
         
     def create_test_conversations(self) -> List[str]:
         """
@@ -167,10 +149,8 @@ class FirestoreSeeder:
         Returns:
             List of conversation IDs
         """
-        print("\n💬 Creating test conversations...")
         
         if len(self.test_users) < 2:
-            print("⚠️  Need at least 2 users to create conversations")
             return []
         
         conversations = []
@@ -270,18 +250,14 @@ class FirestoreSeeder:
                 group_label = f" (group: {conv_data.get('groupName')})"
             else:
                 group_label = ""
-            print(f"  ✓ Created conversation: {conv_id}{group_label}")
         
         self.test_conversations = conversation_ids
-        print(f"✅ Created {len(conversation_ids)} test conversations")
         return conversation_ids
         
     def create_test_messages(self):
         """Create 10+ family-friendly test messages in conversations."""
-        print("\n💌 Creating family-friendly test messages...")
         
         if not self.test_conversations:
-            print("⚠️  No conversations to add messages to")
             return
         
         # Family-friendly message templates
@@ -373,16 +349,12 @@ class FirestoreSeeder:
                 })
             
             conv_label = f"{conv_data.get('groupName', conv_id)}" if is_group else conv_id
-            print(f"  ✓ Added {num_messages} messages to {conv_label}")
         
-        print(f"✅ Created {total_messages} family-friendly test messages")
         
     def create_test_presence(self):
         """Create test presence data."""
-        print("\n👁️  Creating test presence data...")
         
         if not self.test_users:
-            print("⚠️  No users to create presence for")
             return
         
         # Set first 2 users as online, rest as offline
@@ -396,9 +368,7 @@ class FirestoreSeeder:
             }
             
             self.db.collection("presence").document(user_id).set(presence_data)
-            print(f"  ✓ Set {user_id} presence: {status}")
         
-        print("✅ Test presence data created")
         
     def seed_all(self, clear_first: bool = False, auto_confirm: bool = False):
         """
@@ -408,15 +378,11 @@ class FirestoreSeeder:
             clear_first: If True, clear existing data before seeding
             auto_confirm: If True, skip confirmation prompt (for automated runs)
         """
-        print("\n" + "="*60)
-        print("🌱 Starting Firestore Database Seeding")
-        print("="*60)
         
         if clear_first:
             if not auto_confirm:
                 confirm = input("\n⚠️  This will DELETE all existing data. Continue? (yes/no): ")
                 if confirm.lower() != "yes":
-                    print("❌ Seeding cancelled")
                     return
             self.clear_collections()
         
@@ -424,11 +390,6 @@ class FirestoreSeeder:
         existing_users = self.fetch_existing_users()
         
         if not existing_users:
-            print("\n⚠️  No existing users found. Seeding cannot continue.")
-            print("💡 Please create users first using:")
-            print("   1. The iOS app registration flow")
-            print("   2. Firebase Console > Authentication > Add user")
-            print("   3. Firebase CLI: firebase auth:import")
             return
         
         # Ensure users exist in Firestore
@@ -439,15 +400,6 @@ class FirestoreSeeder:
         self.create_test_messages()
         self.create_test_presence()
         
-        print("\n" + "="*60)
-        print("✅ Database seeding completed successfully!")
-        print("="*60)
-        print("\n📊 Summary:")
-        print(f"  - Users: {len(self.test_users)} (from Firebase Auth)")
-        print(f"  - Conversations: {len(self.test_conversations)}")
-        print(f"  - Messages: 10+ family-friendly messages")
-        print(f"  - Presence: {len(self.test_users)} users")
-        print("\n💡 You can now test the app with this data!")
         
 
 def main():
@@ -491,7 +443,6 @@ def main():
         seeder.seed_all(clear_first=args.clear, auto_confirm=args.auto_confirm)
         
     except Exception as e:
-        print(f"\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

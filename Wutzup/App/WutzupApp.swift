@@ -12,10 +12,9 @@ import UserNotifications
 
 @main
 struct WutzupApp: App {
-    @StateObject private var appState = AppState()
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
     let modelContainer: ModelContainer
+    @StateObject private var appState: AppState
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
     init() {
         // Configure Firebase
@@ -30,6 +29,7 @@ struct WutzupApp: App {
         #endif
         
         // Initialize SwiftData container
+        let container: ModelContainer
         do {
             let schema = Schema([
                 MessageModel.self,
@@ -42,13 +42,17 @@ struct WutzupApp: App {
                 isStoredInMemoryOnly: false
             )
             
-            modelContainer = try ModelContainer(
+            container = try ModelContainer(
                 for: schema,
                 configurations: [modelConfiguration]
             )
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
+        
+        // Initialize properties
+        self.modelContainer = container
+        self._appState = StateObject(wrappedValue: AppState(modelContainer: container))
     }
     
     var body: some Scene {

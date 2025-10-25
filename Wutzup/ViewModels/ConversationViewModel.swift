@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import SwiftData
 
 @MainActor
 class ConversationViewModel: ObservableObject {
@@ -36,8 +37,16 @@ class ConversationViewModel: ObservableObject {
     private let aiService: AIService
     private let gifService: GIFService
     private let researchService: ResearchService
+    private let tutorChatService: TutorChatService?
+    private let userService: UserService?
+    private let modelContainer: ModelContainer
     private let networkMonitor = NetworkMonitor.shared
     private let offlineQueue = OfflineMessageQueue.shared
+    
+    // Tutor detection cache
+    @Published private(set) var tutorsInConversation: [User] = []
+    @Published var isGeneratingTutorResponse = false
+    @Published var tutorsGeneratingGreeting: Set<String> = [] // Tutor IDs currently generating greetings
     
     // Expose presenceService for use by child views
     var presenceService: PresenceService {
@@ -56,18 +65,26 @@ class ConversationViewModel: ObservableObject {
     private var isPaused = false
     private var lastSyncTimestamp: Date?
     
-    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, aiService: AIService = FirebaseAIService(), gifService: GIFService = FirebaseGIFService(), researchService: ResearchService = FirebaseResearchService(), draftManager: DraftManager = .shared) {
+    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, modelContainer: ModelContainer, aiService: AIService = FirebaseAIService(), gifService: GIFService = FirebaseGIFService(), researchService: ResearchService = FirebaseResearchService(), tutorChatService: TutorChatService? = nil, userService: UserService? = nil, draftManager: DraftManager = .shared) {
         self.conversation = conversation
         self.messageService = messageService
         self._presenceService = presenceService
         self.authService = authService
+        self.modelContainer = modelContainer
         self.aiService = aiService
         self.gifService = gifService
         self.researchService = researchService
+        self.tutorChatService = tutorChatService
+        self.userService = userService
         self.draftManager = draftManager
         
         // Setup network reconnection observer
         setupNetworkObserver()
+        
+        // Check if there are tutors in this conversation
+        Task {
+            await detectTutorsInConversation()
+        }
     }
     
     deinit {
@@ -110,6 +127,168 @@ class ConversationViewModel: ObservableObject {
         }
         
         await offlineQueue.syncPendingMessages(messageService: messageService)
+    }
+    
+    /// Detect all tutors in this conversation
+    private func detectTutorsInConversation() async {
+        var foundTutors: [User] = []
+        
+        // Create ModelContext from the container
+        let context = ModelContext(modelContainer)
+        
+        // Check each participant to see if any are tutors
+        for participantId in conversation.participantIds {
+            // Skip current user
+            if participantId == authService.currentUser?.id {
+                continue
+            }
+            
+            // Query local storage for the user
+            let descriptor = FetchDescriptor<UserModel>(
+                predicate: #Predicate<UserModel> { $0.id == participantId }
+            )
+            
+            do {
+                let userModels = try context.fetch(descriptor)
+                if let userModel = userModels.first {
+                    if userModel.isTutor {
+                        foundTutors.append(userModel.toDomainModel())
+                    }
+                } else {
+                    // Try to fetch from Firebase as fallback
+                    await fetchUserFromFirebase(participantId: participantId, foundTutors: &foundTutors, context: context)
+                }
+            } catch {
+                // Try to fetch from Firebase as fallback
+                await fetchUserFromFirebase(participantId: participantId, foundTutors: &foundTutors, context: context)
+            }
+        }
+        
+        await MainActor.run {
+            self.tutorsInConversation = foundTutors
+        }
+    }
+    
+    /// Generate greetings for all tutors in the conversation
+    private func generateTutorGreetings() async {
+        guard let tutorService = tutorChatService,
+              let currentUser = authService.currentUser else {
+            return
+        }
+        
+        for tutor in tutorsInConversation {
+            guard let personality = tutor.personality else {
+                continue
+            }
+            
+            await MainActor.run {
+                tutorsGeneratingGreeting.insert(tutor.id)
+            }
+            
+            
+            do {
+                let greeting = try await tutorService.generateTutorGreeting(
+                    tutorId: tutor.id,
+                    tutorPersonality: personality,
+                    tutorName: tutor.displayName,
+                    userName: currentUser.displayName,
+                    conversationId: conversation.id
+                )
+                
+                
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to generate greeting from \(tutor.displayName): \(error.localizedDescription)"
+                }
+            }
+            
+            await MainActor.run {
+                tutorsGeneratingGreeting.remove(tutor.id)
+            }
+        }
+        
+    }
+    
+    /// Fetch user from Firebase as fallback and cache to local storage
+    private func fetchUserFromFirebase(participantId: String, foundTutors: inout [User], context: ModelContext) async {
+        guard let userService = userService else {
+            return
+        }
+        
+        do {
+            let user = try await userService.fetchUser(userId: participantId)
+            
+            // Cache the user to local storage
+            let userModel = UserModel(from: user)
+            context.insert(userModel)
+            try context.save()
+            
+            // Check if user is a tutor
+            if user.isTutor {
+                foundTutors.append(user)
+            }
+            
+        } catch {
+            // Error fetching user from Firebase
+        }
+    }
+    
+    /// Generate a tutor response after user sends a message
+    private func generateTutorResponse() async {
+        guard !tutorsInConversation.isEmpty,
+              let tutorService = tutorChatService,
+              !messages.isEmpty else {
+            return
+        }
+        
+        await MainActor.run {
+            isGeneratingTutorResponse = true
+        }
+        
+        
+        // Generate responses for all tutors in the conversation
+        for tutor in tutorsInConversation {
+            guard let personality = tutor.personality else {
+                continue
+            }
+        
+        do {
+            // Convert recent messages to TutorChatMessage format
+            let recentMessages = messages.suffix(10).map { message in
+                TutorChatMessage(
+                    senderId: message.senderId,
+                    senderName: message.senderName ?? "Unknown",
+                    content: message.content,
+                    timestamp: ISO8601DateFormatter().string(from: message.timestamp)
+                )
+            }
+            
+            
+            // Generate tutor response
+            let response = try await tutorService.generateTutorResponse(
+                tutorId: tutor.id,
+                tutorPersonality: personality,
+                tutorName: tutor.displayName,
+                conversationHistory: Array(recentMessages),
+                conversationId: conversation.id
+            )
+            
+            
+            // Note: The message is already created by the Cloud Function,
+            // so we don't need to create it here. The Firestore listener
+            // will pick it up automatically.
+            
+        } catch {
+            await MainActor.run {
+                errorMessage = "Failed to generate tutor response from \(tutor.displayName): \(error.localizedDescription)"
+            }
+        }
+        }
+        
+        await MainActor.run {
+            isGeneratingTutorResponse = false
+        }
+        
     }
     
     /// Load any saved draft message for this conversation
@@ -373,6 +552,12 @@ class ConversationViewModel: ObservableObject {
             // Mark all undelivered messages as delivered after fetching
             await markUndeliveredMessagesAsDelivered()
             
+            // Check if this is a new conversation with tutors and no existing messages
+            // Only generate tutor greetings if there are truly no messages
+            if !tutorsInConversation.isEmpty && messages.isEmpty {
+                await generateTutorGreetings()
+            }
+            
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -448,6 +633,15 @@ class ConversationViewModel: ObservableObject {
             // Note: The Firestore listener will also pick up this message and may add it again,
             // but the duplicate check in startObserving() will handle that
             
+            // If there are tutors in the conversation, generate their responses
+            if !tutorsInConversation.isEmpty {
+                Task {
+                    // Add a small delay to ensure the message is fully processed
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                    await generateTutorResponse()
+                }
+            }
+            
         } catch {
             
             // Check if error is network-related
@@ -515,6 +709,19 @@ class ConversationViewModel: ObservableObject {
     var typingIndicatorText: String? {
         let currentUserId = authService.currentUser?.id
         let typingUserIds = typingUsers.filter { $0.key != currentUserId && $0.value }.map { $0.key }
+        
+        // Check for tutors generating greetings
+        let tutorsGenerating = tutorsGeneratingGreeting.compactMap { tutorId in
+            tutorsInConversation.first { $0.id == tutorId }?.displayName
+        }
+        
+        if !tutorsGenerating.isEmpty {
+            if tutorsGenerating.count == 1 {
+                return "\(tutorsGenerating.first!) is typing..."
+            } else {
+                return "Multiple tutors are typing..."
+            }
+        }
         
         if typingUserIds.isEmpty {
             return nil

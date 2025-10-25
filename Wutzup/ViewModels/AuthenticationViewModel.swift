@@ -55,9 +55,39 @@ class AuthenticationViewModel: ObservableObject {
         isLoading = false
     }
     
+    func resetPassword() async {
+        guard validateEmailInput() else { return }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            try await authService.resetPassword(email: email)
+            // Success - show success message
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        
+        isLoading = false
+    }
+    
     private func validateLoginInput() -> Bool {
         if email.isEmpty || password.isEmpty {
             errorMessage = "Please fill in all fields"
+            return false
+        }
+        
+        if !email.contains("@") {
+            errorMessage = "Please enter a valid email"
+            return false
+        }
+        
+        return true
+    }
+    
+    private func validateEmailInput() -> Bool {
+        if email.isEmpty {
+            errorMessage = "Please enter your email"
             return false
         }
         

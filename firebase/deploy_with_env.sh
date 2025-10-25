@@ -42,7 +42,7 @@ echo ""
 
 # The .env file will be loaded by python-dotenv at runtime
 echo -e "${YELLOW}Deploying functions (with .env file)...${NC}"
-firebase deploy --only functions:generate_response_suggestions,functions:conduct_research,functions:generate_gif,functions:message_context,functions:translate_text --force
+firebase deploy --only functions:generate_response_suggestions,functions:conduct_research,functions:generate_gif,functions:message_context,functions:translate_text,functions:generate_tutor_greeting,functions:generate_tutor_response,functions:on_conversation_created --force
 
 echo ""
 echo -e "${GREEN}✓ Deployment complete!${NC}"
@@ -53,4 +53,9 @@ echo "2. Test research function in the iOS app"
 echo "3. Test GIF generation in the iOS app"
 echo "4. Test message context feature in the iOS app"
 echo "5. Test translation feature in the iOS app"
+echo "6. Test tutor chat feature:"
+echo "   - Create conversation with tutor in iOS app"
+echo "   - Verify automatic greeting appears"
+echo "   - Send message and verify tutor responds"
+echo "7. Seed tutors if not done: python seed_tutors.py --project-id YOUR_PROJECT_ID"
 
