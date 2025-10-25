@@ -21,7 +21,7 @@ struct GlassTooltip: View {
                     icon: "square.and.pencil",
                     iconColor: AppConstants.Colors.accent,
                     title: "New Chat",
-                    subtitle: "Start a conversation",
+                    subtitle: "Start a 1-on-1 conversation",
                     action: {
                         onNewChat()
                         isPresented.wrappedValue = false
@@ -36,7 +36,7 @@ struct GlassTooltip: View {
                     icon: "person.3",
                     iconColor: AppConstants.Colors.purple,
                     title: "New Group",
-                    subtitle: "Create a group chat",
+                    subtitle: "Create a multi-member conversation",
                     action: {
                         onNewGroup()
                         isPresented.wrappedValue = false

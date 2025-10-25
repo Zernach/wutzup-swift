@@ -16,10 +16,12 @@ struct AddMembersView: View {
     let onMembersAdded: ([User]) -> Void
     
     @StateObject private var userPickerViewModel: UserPickerViewModel
+    @StateObject private var tutorPickerViewModel: UserPickerViewModel
     @State private var selectedUserIds: Set<String> = []
     @State private var isAddingMembers = false
     @State private var showErrorAlert = false
     @State private var errorMessage: String?
+    @State private var selectedTab = 0
     
     init(conversation: Conversation, userService: UserService, chatService: ChatService, onMembersAdded: @escaping ([User]) -> Void) {
         self.conversation = conversation
@@ -27,6 +29,7 @@ struct AddMembersView: View {
         self.chatService = chatService
         self.onMembersAdded = onMembersAdded
         
+        // Initialize view model for regular users
         _userPickerViewModel = StateObject(
             wrappedValue: UserPickerViewModel(
                 userService: userService,
@@ -35,10 +38,26 @@ struct AddMembersView: View {
                 modelContainer: nil
             )
         )
+        
+        // Initialize view model for tutors
+        _tutorPickerViewModel = StateObject(
+            wrappedValue: UserPickerViewModel(
+                userService: userService,
+                currentUserId: nil,
+                tutorFilter: true,
+                modelContainer: nil
+            )
+        )
+    }
+    
+    private var currentViewModel: UserPickerViewModel {
+        selectedTab == 0 ? userPickerViewModel : tutorPickerViewModel
     }
     
     private var selectedUsers: [User] {
-        userPickerViewModel.users.filter { selectedUserIds.contains($0.id) }
+        // Combine users from both view models
+        let allUsers = userPickerViewModel.users + tutorPickerViewModel.users
+        return allUsers.filter { selectedUserIds.contains($0.id) }
     }
     
     private var canAddMembers: Bool {
@@ -47,143 +66,141 @@ struct AddMembersView: View {
     
     private var availableUsers: [User] {
         // Filter out users who are already in the conversation
-        userPickerViewModel.filteredUsers.filter { user in
+        currentViewModel.filteredUsers.filter { user in
             !conversation.participantIds.contains(user.id)
         }
     }
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                AppConstants.Colors.background
-                    .ignoresSafeArea()
+            VStack(spacing: 0) {
+                // Custom Tab Picker
+                HStack(spacing: 0) {
+                    TabButton(
+                        title: "Users",
+                        icon: "person.2",
+                        isSelected: selectedTab == 0,
+                        action: { selectedTab = 0 }
+                    )
+                    
+                    TabButton(
+                        title: "Tutors",
+                        icon: "graduationcap",
+                        isSelected: selectedTab == 1,
+                        action: { selectedTab = 1 }
+                    )
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .background(AppConstants.Colors.background)
                 
-                if userPickerViewModel.isLoading {
-                    ProgressView("Loading users...")
-                        .tint(AppConstants.Colors.accent)
-                } else if availableUsers.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "person.3.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(AppConstants.Colors.mutedIcon)
-                        
-                        Text("No Available Users")
-                            .font(.headline)
-                            .foregroundColor(AppConstants.Colors.textPrimary)
-                        
-                        Text("All users are already members of this conversation.")
-                            .font(.subheadline)
-                            .foregroundColor(AppConstants.Colors.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
-                } else {
-                    VStack(spacing: 0) {
-                        // Selected users count
-                        if !selectedUsers.isEmpty {
-                            HStack {
-                                Text("\(selectedUsers.count) selected")
-                                    .font(.subheadline)
-                                    .foregroundColor(AppConstants.Colors.textSecondary)
-                                
-                                Spacer()
-                                
-                                Button("Clear") {
-                                    selectedUserIds.removeAll()
-                                }
+                // Content
+                ZStack {
+                    AppConstants.Colors.background
+                        .ignoresSafeArea()
+                    
+                    if currentViewModel.isLoading {
+                        ProgressView("Loading \(selectedTab == 0 ? "users" : "tutors")...")
+                            .tint(AppConstants.Colors.accent)
+                    } else if availableUsers.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: selectedTab == 0 ? "person.3.fill" : "graduationcap.fill")
+                                .font(.system(size: 50))
+                                .foregroundColor(AppConstants.Colors.mutedIcon)
+                            
+                            Text("No Available \(selectedTab == 0 ? "Users" : "Tutors")")
+                                .font(.headline)
+                                .foregroundColor(AppConstants.Colors.textPrimary)
+                            
+                            Text("All \(selectedTab == 0 ? "users" : "tutors") are already members of this conversation.")
                                 .font(.subheadline)
-                                .foregroundColor(AppConstants.Colors.accent)
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 8)
-                            .background(AppConstants.Colors.surface)
+                                .foregroundColor(AppConstants.Colors.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
                         }
-                        
-                        // Users list
-                        List {
-                            ForEach(availableUsers) { user in
-                                Button {
-                                    toggleSelection(for: user)
-                                } label: {
-                                    HStack(spacing: 12) {
-                                        UserProfileImageView(
-                                            user: user,
-                                            size: 44,
-                                            showOnlineStatus: false,
-                                            presenceService: nil
-                                        )
-                                        
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(user.displayName)
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(AppConstants.Colors.textPrimary)
-                                            
-                                            Text(user.email)
-                                                .font(.caption)
-                                                .foregroundColor(AppConstants.Colors.textSecondary)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        if selectedUserIds.contains(user.id) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(AppConstants.Colors.accent)
-                                                .font(.title2)
-                                        } else {
-                                            Image(systemName: "circle")
-                                                .foregroundColor(AppConstants.Colors.textSecondary)
-                                                .font(.title2)
-                                        }
+                    } else {
+                        VStack(spacing: 0) {
+                            // Selected users count
+                            if !selectedUsers.isEmpty {
+                                HStack {
+                                    Text("\(selectedUsers.count) selected")
+                                        .font(.subheadline)
+                                        .foregroundColor(AppConstants.Colors.textSecondary)
+                                    
+                                    Spacer()
+                                    
+                                    Button("Clear") {
+                                        selectedUserIds.removeAll()
                                     }
-                                    .padding(.vertical, 4)
+                                    .font(.subheadline)
+                                    .foregroundColor(AppConstants.Colors.accent)
+                                }
+                                .padding(.horizontal)
+                                .padding(.vertical, 8)
+                                .background(AppConstants.Colors.surface)
+                            }
+                            
+                            // TabView for switching between users and tutors
+                            TabView(selection: $selectedTab) {
+                                // Users List
+                                AddMembersListView(
+                                    users: availableUsers,
+                                    selectedUserIds: $selectedUserIds,
+                                    isAddingMembers: isAddingMembers,
+                                    toggleSelection: toggleSelection
+                                )
+                                .tag(0)
+                                
+                                // Tutors List
+                                AddMembersListView(
+                                    users: availableUsers,
+                                    selectedUserIds: $selectedUserIds,
+                                    isAddingMembers: isAddingMembers,
+                                    toggleSelection: toggleSelection
+                                )
+                                .tag(1)
+                            }
+                            .tabViewStyle(.page(indexDisplayMode: .never))
+                            .animation(.easeInOut(duration: 0.3), value: selectedTab)
+                            
+                            // Add Members Button
+                            VStack(spacing: 0) {
+                                Divider()
+                                    .background(AppConstants.Colors.border)
+                                
+                                Button {
+                                    Task {
+                                        await addSelectedMembers()
+                                    }
+                                } label: {
+                                    HStack {
+                                        if isAddingMembers {
+                                            ProgressView()
+                                                .scaleEffect(0.8)
+                                                .tint(AppConstants.Colors.accent)
+                                        } else {
+                                            Image(systemName: "person.badge.plus")
+                                                .font(.title2)
+                                        }
+                                        
+                                        Text(isAddingMembers ? "Adding Members..." : "Add Members")
+                                            .font(.headline)
+                                            .fontWeight(.semibold)
+                                    }
+                                    .foregroundColor(AppConstants.Colors.accent)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 56)
+                                    .background(AppConstants.Colors.surface)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 0)
+                                            .stroke(AppConstants.Colors.border, lineWidth: 0.5)
+                                    )
                                 }
                                 .buttonStyle(.plain)
-                                .contentShape(Rectangle())
-                                .disabled(isAddingMembers)
-                                .listRowBackground(AppConstants.Colors.surface)
-                                .listRowSeparatorTint(AppConstants.Colors.border)
+                                .disabled(!canAddMembers)
+                                .opacity(canAddMembers ? 1.0 : 0.6)
                             }
-                        }
-                        .listStyle(.plain)
-                        .scrollContentBackground(.hidden)
-                        
-                        // Add Members Button
-                        VStack(spacing: 0) {
-                            Divider()
-                                .background(AppConstants.Colors.border)
-                            
-                            Button {
-                                Task {
-                                    await addSelectedMembers()
-                                }
-                            } label: {
-                                HStack {
-                                    if isAddingMembers {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                            .tint(AppConstants.Colors.accent)
-                                    } else {
-                                        Image(systemName: "person.badge.plus")
-                                            .font(.title2)
-                                    }
-                                    
-                                    Text(isAddingMembers ? "Adding Members..." : "Add Members")
-                                        .font(.headline)
-                                        .fontWeight(.semibold)
-                                }
-                                .foregroundColor(AppConstants.Colors.accent)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(AppConstants.Colors.surface)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 0)
-                                        .stroke(AppConstants.Colors.border, lineWidth: 0.5)
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(!canAddMembers)
-                            .opacity(canAddMembers ? 1.0 : 0.6)
                         }
                     }
                 }
@@ -197,9 +214,13 @@ struct AddMembersView: View {
                     }
                 }
             }
-            .searchable(text: $userPickerViewModel.searchText, prompt: "Search users")
+            .searchable(text: Binding(
+                get: { currentViewModel.searchText },
+                set: { currentViewModel.searchText = $0 }
+            ), prompt: "Search \(selectedTab == 0 ? "users" : "tutors")")
             .task {
                 await userPickerViewModel.loadUsers()
+                await tutorPickerViewModel.loadUsers()
             }
             .alert("Unable to Add Members", isPresented: $showErrorAlert, presenting: errorMessage) { _ in
                 Button("OK", role: .cancel) { }
@@ -361,5 +382,64 @@ private final class PreviewChatService: ChatService {
     
     func updateConversation(_ conversation: Conversation) async throws {
         // Preview implementation - no-op
+    }
+}
+
+
+// MARK: - AddMembersListView Component
+struct AddMembersListView: View {
+    let users: [User]
+    @Binding var selectedUserIds: Set<String>
+    let isAddingMembers: Bool
+    let toggleSelection: (User) -> Void
+    
+    var body: some View {
+        List {
+            ForEach(users) { user in
+                Button {
+                    toggleSelection(user)
+                } label: {
+                    HStack(spacing: 12) {
+                        UserProfileImageView(
+                            user: user,
+                            size: 44,
+                            showOnlineStatus: false,
+                            presenceService: nil
+                        )
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(user.displayName)
+                                .font(.body)
+                                .fontWeight(.medium)
+                                .foregroundColor(AppConstants.Colors.textPrimary)
+                            
+                            Text(user.email)
+                                .font(.caption)
+                                .foregroundColor(AppConstants.Colors.textSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        if selectedUserIds.contains(user.id) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(AppConstants.Colors.accent)
+                                .font(.title2)
+                        } else {
+                            Image(systemName: "circle")
+                                .foregroundColor(AppConstants.Colors.textSecondary)
+                                .font(.title2)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .disabled(isAddingMembers)
+                .listRowBackground(AppConstants.Colors.surface)
+                .listRowSeparatorTint(AppConstants.Colors.border)
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 }

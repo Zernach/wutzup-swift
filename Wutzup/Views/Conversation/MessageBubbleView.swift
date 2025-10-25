@@ -23,6 +23,7 @@ struct MessageBubbleView: View {
     @State private var translatedText: String?
     @State private var translationLanguage: String?
     @State private var contextText: String?
+    @State private var senderUser: User?
     
     var body: some View {
         ZStack {
@@ -32,11 +33,13 @@ struct MessageBubbleView: View {
                 }
                 
                 VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 4) {
-                    // Sender name (for group chats or other users)
-                    if !message.isFromCurrentUser, let senderName = message.senderName {
-                        Text(senderName)
-                            .font(.caption)
-                            .foregroundColor(AppConstants.Colors.textSecondary)
+                    // Sender name (for group chats with more than 2 participants)
+                    if !message.isFromCurrentUser && isGroupChat {
+                        SenderInfoView(
+                            senderName: message.senderName,
+                            senderUser: senderUser,
+                            message: message
+                        )
                     }
                     
                     // Message bubble
@@ -195,6 +198,14 @@ struct MessageBubbleView: View {
                 
                 hasInitialized = true
             }
+            
+            // Fetch sender user information for group chats
+            if !message.isFromCurrentUser && isGroupChat && senderUser == nil {
+                Task {
+                    await fetchSenderUser()
+                }
+            }
+            
             onAppear?()
         }
         .onDisappear {
@@ -269,6 +280,23 @@ struct MessageBubbleView: View {
             return lines.prefix(1).joined(separator: "\n")
         }
         return message.content
+    }
+    
+    // MARK: - Computed Properties
+    
+    /// Determines if this is a group chat (more than 2 participants)
+    private var isGroupChat: Bool {
+        guard let conversation = conversation else { return false }
+        return conversation.participantIds.count > 2
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Fetches sender user information for group chats
+    private func fetchSenderUser() async {
+        // This would need to be implemented with access to a UserService
+        // For now, we'll use the senderName from the message
+        // In a real implementation, you'd fetch the full user data here
     }
     
     @ViewBuilder
@@ -366,6 +394,7 @@ struct AlignedTranslationView: View {
         let paragraphs = text.components(separatedBy: "\n")
         return paragraphs
     }
+    
 }
 
 /// A column that displays paragraphs with proper alignment

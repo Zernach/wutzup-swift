@@ -88,9 +88,15 @@ service cloud.firestore {
         && request.resource.data.unreadCount is int;
 
       // Only participants can update conversation metadata
+      // Allow adding new participants (for group chat conversion)
       allow update: if isAuthenticated()
         && request.auth.uid in resource.data.participantIds
-        && request.resource.data.participantIds == resource.data.participantIds;  // Can't change participants
+        // Allow adding new participants (existing participants must be preserved)
+        && request.resource.data.participantIds.toSet().hasAll(resource.data.participantIds.toSet())
+        // Ensure the current user remains a participant
+        && request.auth.uid in request.resource.data.participantIds
+        // Ensure we're not removing any existing participants
+        && request.resource.data.participantIds.size() >= resource.data.participantIds.size();
 
       // Conversations cannot be deleted directly (handle via Cloud Functions)
       allow delete: if false;

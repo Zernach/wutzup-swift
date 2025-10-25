@@ -10,6 +10,7 @@ import Foundation
 import SwiftData
 
 struct TabbedNewChatView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var userPickerViewModel: UserPickerViewModel
     @StateObject private var tutorPickerViewModel: UserPickerViewModel
     
@@ -56,8 +57,65 @@ struct TabbedNewChatView: View {
         ZStack {
             AppConstants.Colors.background
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
 
             VStack(spacing: 0) {
+                // Custom Navigation Bar with Search
+                HStack(spacing: 8) {
+                    // Back Button
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(AppConstants.Colors.accent)
+                    }
+                    .padding(.leading, 8)
+                    
+                    // Search Bar - Takes up remaining space
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(AppConstants.Colors.textSecondary)
+                            .font(.system(size: 16, weight: .medium))
+                        
+                        TextField("Search users", text: selectedTab == 0 ? $userPickerViewModel.searchText : $tutorPickerViewModel.searchText)
+                            .font(.system(size: 16))
+                            .foregroundColor(AppConstants.Colors.textPrimary)
+                            .textFieldStyle(.plain)
+                        
+                        if !(selectedTab == 0 ? userPickerViewModel.searchText : tutorPickerViewModel.searchText).isEmpty {
+                            Button(action: {
+                                if selectedTab == 0 {
+                                    userPickerViewModel.searchText = ""
+                                } else {
+                                    tutorPickerViewModel.searchText = ""
+                                }
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(AppConstants.Colors.textSecondary)
+                                    .font(.system(size: 14))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(AppConstants.Colors.border.opacity(0.3), lineWidth: 1)
+                    )
+                    .padding(.trailing, 16)
+                }
+                .frame(height: 44)
+                .background(AppConstants.Colors.background)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                
                 // Custom Tab Picker
                 HStack(spacing: 0) {
                     TabButton(
@@ -100,60 +158,9 @@ struct TabbedNewChatView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut(duration: 0.3), value: selectedTab)
             }
+            .ignoresSafeArea(edges: .bottom)
         }
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItemGroup(placement: .principal) {
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(AppConstants.Colors.textSecondary)
-                        .font(.system(size: 16, weight: .medium))
-                    
-                    TextField("Search users", text: selectedTab == 0 ? $userPickerViewModel.searchText : $tutorPickerViewModel.searchText)
-                        .font(.system(size: 16))
-                        .foregroundColor(AppConstants.Colors.textPrimary)
-                        .textFieldStyle(.plain)
-                    
-                    if !(selectedTab == 0 ? userPickerViewModel.searchText : tutorPickerViewModel.searchText).isEmpty {
-                        Button(action: {
-                            if selectedTab == 0 {
-                                userPickerViewModel.searchText = ""
-                            } else {
-                                tutorPickerViewModel.searchText = ""
-                            }
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(AppConstants.Colors.textSecondary)
-                                .font(.system(size: 16))
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity)
-                .background(
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 25, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                            .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 4)
-                        
-                        RoundedRectangle(cornerRadius: 25, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        AppConstants.Colors.accent.opacity(0.3),
-                                        AppConstants.Colors.border.opacity(0.15)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                    }
-                )
-            }
-        }
+        .navigationBarBackButtonHidden(true)
         .task {
             // Load both user types
             await userPickerViewModel.loadUsers()
@@ -186,35 +193,12 @@ struct TabbedNewChatView: View {
             }
         }
     }
-}
-
-// MARK: - Tab Button Component
-struct TabButton: View {
-    let title: String
-    let icon: String
-    let isSelected: Bool
-    let action: () -> Void
     
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
-                Text(title)
-                    .font(.system(size: 16, weight: .medium))
-            }
-            .foregroundColor(isSelected ? AppConstants.Colors.accent : AppConstants.Colors.textSecondary)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(isSelected ? AppConstants.Colors.accent.opacity(0.15) : Color.clear)
-            )
-        }
-        .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 0.2), value: isSelected)
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
+
 
 // MARK: - User List View Component
 struct UserListView: View {

@@ -10,6 +10,7 @@ import Combine
 import SwiftData
 
 struct TabbedNewGroupView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var userPickerViewModel: UserPickerViewModel
     @StateObject private var tutorPickerViewModel: UserPickerViewModel
     @ObservedObject var chatListViewModel: ChatListViewModel
@@ -71,6 +72,60 @@ struct TabbedNewGroupView: View {
                 }
             
             VStack(spacing: 0) {
+                // Custom Navigation Bar with Search
+                HStack(spacing: 8) {
+                    // Back Button
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(AppConstants.Colors.accent)
+                    }
+                    .padding(.leading, 8)
+                    
+                    // Search Bar - Takes up remaining space
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(AppConstants.Colors.textSecondary)
+                            .font(.system(size: 16, weight: .medium))
+                        
+                        TextField("Search users", text: selectedTab == 0 ? $userPickerViewModel.searchText : $tutorPickerViewModel.searchText)
+                            .font(.system(size: 16))
+                            .foregroundColor(AppConstants.Colors.textPrimary)
+                            .textFieldStyle(.plain)
+                        
+                        if !(selectedTab == 0 ? userPickerViewModel.searchText : tutorPickerViewModel.searchText).isEmpty {
+                            Button(action: {
+                                if selectedTab == 0 {
+                                    userPickerViewModel.searchText = ""
+                                } else {
+                                    tutorPickerViewModel.searchText = ""
+                                }
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(AppConstants.Colors.textSecondary)
+                                    .font(.system(size: 14))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(AppConstants.Colors.border.opacity(0.3), lineWidth: 1)
+                    )
+                    .padding(.trailing, 16)
+                }
+                .frame(height: 44)
+                .background(AppConstants.Colors.background)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                
                 // Group Name Section
                 VStack(spacing: 0) {
                     HStack {
@@ -136,6 +191,7 @@ struct TabbedNewGroupView: View {
                 .animation(.easeInOut(duration: 0.3), value: selectedTab)
                 .padding(.bottom, 100) // Add bottom padding to prevent content from being hidden behind the fixed button
             }
+            .ignoresSafeArea(edges: .bottom)
             
             // Fixed Create Group Button at the bottom
             VStack {
@@ -198,59 +254,7 @@ struct TabbedNewGroupView: View {
                 .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: -2)
             }
         }
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItemGroup(placement: .principal) {
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(AppConstants.Colors.textSecondary)
-                        .font(.system(size: 16, weight: .medium))
-                    
-                    TextField("Search users", text: selectedTab == 0 ? $userPickerViewModel.searchText : $tutorPickerViewModel.searchText)
-                        .font(.system(size: 16))
-                        .foregroundColor(AppConstants.Colors.textPrimary)
-                        .textFieldStyle(.plain)
-                    
-                    if !(selectedTab == 0 ? userPickerViewModel.searchText : tutorPickerViewModel.searchText).isEmpty {
-                        Button(action: {
-                            if selectedTab == 0 {
-                                userPickerViewModel.searchText = ""
-                            } else {
-                                tutorPickerViewModel.searchText = ""
-                            }
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(AppConstants.Colors.textSecondary)
-                                .font(.system(size: 16))
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .frame(maxWidth: .infinity)
-                .background(
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                            .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
-                        
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [
-                                        AppConstants.Colors.accent.opacity(0.3),
-                                        AppConstants.Colors.border.opacity(0.15)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                    }
-                )
-            }
-        }
+        .navigationBarBackButtonHidden(true)
         .task {
             // Load both user types
             await userPickerViewModel.loadUsers()

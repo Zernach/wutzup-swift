@@ -38,46 +38,40 @@ struct GroupMembersView: View {
                             .padding(.horizontal)
                     }
                 } else {
-                    VStack(spacing: 0) {
-                        List {
-                            Section {
-                                ForEach(members) { member in
-                                    HStack(spacing: 12) {
-                                        // Profile Image with online status
-                                        UserProfileImageView(
-                                            user: member,
-                                            size: 44,
-                                            showOnlineStatus: true,
-                                            presenceService: presenceService
-                                        )
+                    List {
+                        Section {
+                            ForEach(members) { member in
+                                HStack(spacing: 12) {
+                                    // Profile Image with online status
+                                    UserProfileImageView(
+                                        user: member,
+                                        size: 44,
+                                        showOnlineStatus: true,
+                                        presenceService: presenceService
+                                    )
+                                    
+                                    // Member Info
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(member.displayName)
+                                            .font(.body)
+                                            .fontWeight(.medium)
                                         
-                                        // Member Info
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(member.displayName)
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                            
-                                            Text(member.email)
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        
-                                        Spacer()
+                                        Text(member.email)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
                                     }
-                                    .padding(.vertical, 4)
+                                    
+                                    Spacer()
                                 }
-                            } header: {
-                                Text("\(members.count) Members")
+                                .padding(.vertical, 4)
                             }
+                        } header: {
+                            Text("\(members.count) Members")
                         }
-                        .listStyle(.plain)
                         
-                        // Add Members Button
+                        // Add Members Button Section
                         if conversation.isGroup {
-                            VStack(spacing: 0) {
-                                Divider()
-                                    .background(AppConstants.Colors.border)
-                                
+                            Section {
                                 Button {
                                     showingAddMembers = true
                                 } label: {
@@ -92,17 +86,14 @@ struct GroupMembersView: View {
                                             .foregroundColor(AppConstants.Colors.accent)
                                     }
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 56)
-                                    .background(AppConstants.Colors.surface)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 0)
-                                            .stroke(AppConstants.Colors.border, lineWidth: 0.5)
-                                    )
+                                    .frame(height: 44)
                                 }
                                 .buttonStyle(.plain)
+                                .listRowBackground(Color.clear)
                             }
                         }
                     }
+                    .listStyle(.insetGrouped)
                 }
             }
             .navigationTitle(conversation.isGroup ? (conversation.groupName ?? "Group Members") : "Chat Info")

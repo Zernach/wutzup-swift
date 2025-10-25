@@ -20,7 +20,8 @@ class FirebaseTutorChatService: TutorChatService {
         tutorPersonality: String,
         tutorName: String,
         userName: String,
-        conversationId: String
+        conversationId: String,
+        groupName: String?
     ) async throws -> String {
         let url = URL(string: "\(functionBaseURL)/generate_tutor_greeting")!
         
@@ -28,13 +29,18 @@ class FirebaseTutorChatService: TutorChatService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "tutor_id": tutorId,
             "tutor_personality": tutorPersonality,
             "tutor_name": tutorName,
             "user_name": userName,
             "conversation_id": conversationId
         ]
+        
+        // Include group name if provided
+        if let groupName = groupName {
+            body["group_name"] = groupName
+        }
         
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)

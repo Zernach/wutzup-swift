@@ -192,7 +192,8 @@ class ConversationViewModel: ObservableObject {
                     tutorPersonality: personality,
                     tutorName: tutor.displayName,
                     userName: currentUser.displayName,
-                    conversationId: conversation.id
+                    conversationId: conversation.id,
+                    groupName: conversation.isGroup ? conversation.groupName : nil
                 )
                 
                 

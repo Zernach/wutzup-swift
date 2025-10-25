@@ -16,13 +16,15 @@ protocol TutorChatService: Sendable {
     ///   - tutorName: The tutor's display name
     ///   - userName: The human user's name
     ///   - conversationId: The conversation ID
+    ///   - groupName: The name of the group (if applicable)
     /// - Returns: The generated greeting message
     func generateTutorGreeting(
         tutorId: String,
         tutorPersonality: String,
         tutorName: String,
         userName: String,
-        conversationId: String
+        conversationId: String,
+        groupName: String?
     ) async throws -> String
     
     /// Generate a tutor response based on conversation history

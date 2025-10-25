@@ -5,7 +5,24 @@
 **Date**: October 25, 2025  
 **Phase**: Phase 1 (iOS Setup) 100% Complete → Ready for Xcode Project Creation
 
-**Latest Update**: 🤖 **AI Tutor Chat with Automatic Conversations** (October 25, 2025)
+**Latest Update**: 🎓 **Group-Aware Tutor Greetings** (October 25, 2025)
+
+**Group Context for Tutor Greetings:**
+- ✅ Updated TutorChatService protocol to include optional `groupName` parameter
+- ✅ Updated FirebaseTutorChatService to send groupName to Cloud Function
+- ✅ Updated ConversationViewModel to pass group name when generating tutor greetings
+- ✅ Enhanced Cloud Function prompt to acknowledge group context in greeting
+- ✅ Tutors now naturally reference the group name when joining group chats
+- 🎯 **User Experience:** When creating a group with tutors, the tutor's greeting acknowledges the group name and expresses excitement about helping everyone in the group
+- 🎯 **Smart Context:** Group name only sent when conversation is a group (isGroup = true)
+- 📝 **Files Updated:** 
+  - `wutzup/Services/Protocols/TutorChatService.swift` (added groupName parameter)
+  - `wutzup/Services/Firebase/FirebaseTutorChatService.swift` (sends groupName in request)
+  - `wutzup/ViewModels/ConversationViewModel.swift` (passes groupName from conversation)
+  - `firebase/functions/main.py` (enhanced prompt with group context)
+- 💡 **Example:** In a group called "Spanish Study Group", the tutor will naturally reference the group name: "¡Hola! I'm so excited to join the Spanish Study Group and help everyone learn together!"
+
+**Previously Completed**: 🤖 **AI Tutor Chat with Automatic Conversations** (October 25, 2025)
 
 **AI Tutor Chat Implementation:**
 - ✅ Created `generate_tutor_greeting` Cloud Function - generates personalized welcome messages when conversation with tutor is created
