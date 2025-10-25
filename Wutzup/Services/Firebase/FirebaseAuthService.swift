@@ -144,6 +144,10 @@ class FirebaseAuthService: AuthenticationService, ObservableObject {
         authStateSubject.send(nil)
     }
     
+    func resetPassword(email: String) async throws {
+        try await auth.sendPasswordReset(withEmail: email)
+    }
+    
     private func ensureUserDocument(for authUser: FirebaseAuth.User, emailOverride: String? = nil, displayNameOverride: String? = nil) async throws -> User {
         let userRef = db.collection("users").document(authUser.uid)
         let snapshot = try await userRef.getDocument()

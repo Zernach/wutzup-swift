@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
+import SwiftData
 import Combine
 
 struct LoginView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: AuthenticationViewModel
     @State private var showRegistration = false
+    @State private var showForgotPassword = false
     
     init(viewModel: AuthenticationViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -22,22 +24,29 @@ struct LoginView: View {
             ZStack {
                 AppConstants.Colors.background
                     .ignoresSafeArea()
+                    .onTapGesture {
+                        hideKeyboard()
+                    }
                 
-                VStack(spacing: 24) {
-                    Spacer()
-                    
-                    Image(systemName: "message.circle.fill")
+                ScrollView {
+                    VStack(spacing: 24) {
+                    Image("AppIconImage")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 100, height: 100)
-                        .foregroundColor(AppConstants.Colors.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .padding(.top, 80)
                     
-                    Text("Wutzup")
+                    Text("Wutzup International")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                         .foregroundColor(AppConstants.Colors.textPrimary)
                     
-                    Spacer()
+                    Text("Language Learning Powered by AI")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                        .foregroundColor(AppConstants.Colors.textSecondary)
+                        .multilineTextAlignment(.center)
                     
                     VStack(spacing: 16) {
                         TextField("Email", text: $viewModel.email)
@@ -101,6 +110,15 @@ struct LoginView: View {
                     .padding(.horizontal, 30)
                     
                     Button(action: {
+                        showForgotPassword = true
+                    }) {
+                        Text("Forgot Password?")
+                            .foregroundColor(AppConstants.Colors.accent)
+                            .font(.callout)
+                    }
+                    .padding(.top, 6)
+                    
+                    Button(action: {
                         showRegistration = true
                     }) {
                         Text("Don't have an account? **Sign Up**")
@@ -110,10 +128,15 @@ struct LoginView: View {
                     .padding(.top, 6)
                     
                     Spacer()
+                    }
+                    .frame(minHeight: UIScreen.main.bounds.height)
                 }
             }
             .navigationDestination(isPresented: $showRegistration) {
                 RegisterView(viewModel: appState.makeAuthenticationViewModel())
+            }
+            .navigationDestination(isPresented: $showForgotPassword) {
+                ForgotPasswordView(viewModel: appState.makeAuthenticationViewModel())
             }
         }
     }
@@ -124,13 +147,20 @@ struct LoginView: View {
         
         Task { @MainActor in await viewModel.login() }
     }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
 }
 
 #Preview {
     let previewService = PreviewAuthenticationService()
     let viewModel = AuthenticationViewModel(authService: previewService)
+    // Create a minimal ModelContainer for preview
+    let container = try! ModelContainer(for: UserModel.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    let previewState = AppState(modelContainer: container)
     return LoginView(viewModel: viewModel)
-        .environmentObject(AppState())
+        .environmentObject(previewState)
 }
 
 private final class PreviewAuthenticationService: AuthenticationService {
@@ -157,4 +187,6 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
     
     func deleteAccount() async throws { }
+    
+    func resetPassword(email: String) async throws { }
 }

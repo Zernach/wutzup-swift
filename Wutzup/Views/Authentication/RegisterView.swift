@@ -20,24 +20,31 @@ struct RegisterView: View {
         ZStack {
             AppConstants.Colors.background
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
-            VStack(spacing: 24) {
-                Spacer()
-                
-                Image(systemName: "person.crop.circle.badge.plus")
+            ScrollView {
+                VStack(spacing: 16) {
+                Image("AppIconImage")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
-                    .foregroundColor(AppConstants.Colors.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding(.top, 20)
                 
-                Text("Create Account")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                Text("Wutzup International")
+                    .font(.title2)
+                    .fontWeight(.semibold)
                     .foregroundColor(AppConstants.Colors.textPrimary)
                 
-                Spacer()
+                Text("Language Learning Powered by AI")
+                    .font(.title3)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppConstants.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
                 
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     TextField("Display Name", text: $viewModel.displayName)
                         .textContentType(.name)
                         .autocorrectionDisabled(true)
@@ -109,34 +116,21 @@ struct RegisterView: View {
                     .disabled(viewModel.isLoading)
                     .shadow(color: AppConstants.Colors.accent.opacity(0.35), radius: 12, y: 4)
                 }
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 20)
                 
                 Button(action: {
                     dismiss()
                 }) {
-                    Text("Already have an account? **Log In**")
+                    Text("Back to Login")
                         .foregroundColor(AppConstants.Colors.accent)
                         .font(.callout)
                 }
-                .padding(.top, 6)
-                
-                Spacer()
-            }
-        }
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    dismiss()
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
+                .padding(.top, 12)
                 }
-                .tint(AppConstants.Colors.accent)
             }
         }
+        .navigationTitle("Sign Up")
+        .navigationBarTitleDisplayMode(.inline)
     }
     
     private func submitRegistrationFromPasswordField() {
@@ -144,6 +138,10 @@ struct RegisterView: View {
         guard !trimmedPassword.isEmpty else { return }
         
         Task { @MainActor in await viewModel.register() }
+    }
+    
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
@@ -179,4 +177,6 @@ private final class PreviewAuthenticationService: AuthenticationService {
     func updateProfile(displayName: String?, profileImageUrl: String?) async throws { }
     
     func deleteAccount() async throws { }
+    
+    func resetPassword(email: String) async throws { }
 }
