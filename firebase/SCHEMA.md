@@ -48,6 +48,7 @@ firestore/
 │               ├── timestamp: timestamp
 │               ├── mediaUrl?: string
 │               ├── mediaType?: 'image' | 'video'
+│               ├── language?: string
 │               ├── readBy: string[]
 │               └── deliveredTo: string[]
 │
@@ -272,6 +273,7 @@ conversationsRef.onSnapshot(snapshot => {
 | `timestamp` | timestamp | Yes | Message creation timestamp |
 | `mediaUrl` | string | No | URL to media file (Firebase Storage) |
 | `mediaType` | string | No | 'image' or 'video' |
+| `language` | string | No | Detected language code (ISO 639-1) |
 | `readBy` | string[] | Yes | Array of user IDs who read the message |
 | `deliveredTo` | string[] | Yes | Array of user IDs who received the message |
 
@@ -285,6 +287,7 @@ interface Message {
   timestamp: FirebaseFirestore.Timestamp;
   mediaUrl?: string;
   mediaType?: 'image' | 'video';
+  language?: string;             // ISO 639-1 language code
   readBy: string[];              // User IDs
   deliveredTo: string[];         // User IDs
 }
@@ -302,6 +305,7 @@ class Message(TypedDict):
     timestamp: SERVER_TIMESTAMP
     mediaUrl: Optional[str]
     mediaType: Optional[Literal['image', 'video']]
+    language: Optional[str]  # ISO 639-1 language code
     readBy: List[str]
     deliveredTo: List[str]
 ```
@@ -314,6 +318,7 @@ class Message(TypedDict):
   "senderId": "user_abc123",
   "content": "Hey! How are you?",
   "timestamp": "2025-10-21T15:30:00Z",
+  "language": "en",
   "readBy": ["user_abc123", "user_def456"],
   "deliveredTo": ["user_abc123", "user_def456"]
 }
