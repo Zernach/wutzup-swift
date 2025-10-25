@@ -12,6 +12,11 @@ import FirebaseFirestore
 class FirebaseMessageService: MessageService {
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
+    private let languageDetectionService: LanguageDetectionService
+    
+    init(languageDetectionService: LanguageDetectionService = NaturalLanguageDetectionService()) {
+        self.languageDetectionService = languageDetectionService
+    }
     
     func sendMessage(conversationId: String, content: String, mediaUrl: String?, mediaType: String?, messageId: String?) async throws -> Message {
         
@@ -23,6 +28,9 @@ class FirebaseMessageService: MessageService {
         // Fetch current user for display name
         let userDoc = try await db.collection("users").document(currentUserId).getDocument()
         let senderName = userDoc.data()?["displayName"] as? String
+        
+        // Detect language for text content
+        let detectedLanguage = await languageDetectionService.detectLanguage(for: content)
         
         // Create message with provided ID or generate new one
         // Use .sending status initially, will update to .sent after successful write
@@ -36,6 +44,7 @@ class FirebaseMessageService: MessageService {
             status: .sending,  // Start with sending status
             mediaUrl: mediaUrl,
             mediaType: mediaType,
+            language: detectedLanguage,
             isFromCurrentUser: true
         )
         

@@ -131,6 +131,7 @@ struct LoginView: View {
                     }
                     .frame(minHeight: UIScreen.main.bounds.height)
                 }
+                .scrollIndicators(.hidden)
             }
             .navigationDestination(isPresented: $showRegistration) {
                 RegisterView(viewModel: appState.makeAuthenticationViewModel())

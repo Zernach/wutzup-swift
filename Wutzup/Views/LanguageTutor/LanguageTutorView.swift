@@ -85,6 +85,7 @@ struct LanguageTutorView: View {
                         }
                         .padding()
                     }
+                    .scrollIndicators(.hidden)
                     .onChange(of: messages.count) { _, _ in
                         if let lastMessage = messages.last {
                             withAnimation {

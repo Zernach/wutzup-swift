@@ -710,6 +710,16 @@ class ConversationViewModel: ObservableObject {
         let currentUserId = authService.currentUser?.id
         let typingUserIds = typingUsers.filter { $0.key != currentUserId && $0.value }.map { $0.key }
         
+        // Check for tutors generating responses
+        if isGeneratingTutorResponse {
+            let tutorNames = tutorsInConversation.map { $0.displayName }
+            if tutorNames.count == 1 {
+                return "\(tutorNames.first!) is typing..."
+            } else {
+                return "Tutor is typing..."
+            }
+        }
+        
         // Check for tutors generating greetings
         let tutorsGenerating = tutorsGeneratingGreeting.compactMap { tutorId in
             tutorsInConversation.first { $0.id == tutorId }?.displayName

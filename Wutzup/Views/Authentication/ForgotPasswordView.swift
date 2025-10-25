@@ -123,6 +123,7 @@ struct ForgotPasswordView: View {
                     }
                     .frame(minHeight: UIScreen.main.bounds.height * 0.7)
                 }
+                .scrollIndicators(.hidden)
             }
             .navigationTitle("Forgot Password")
             .navigationBarTitleDisplayMode(.inline)

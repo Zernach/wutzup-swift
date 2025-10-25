@@ -21,9 +21,10 @@ final class MessageModel {
     var mediaType: String?
     var readByData: Data? // Encoded [String]
     var deliveredToData: Data? // Encoded [String]
+    var language: String?
     var isFromCurrentUser: Bool
     
-    init(id: String, conversationId: String, senderId: String, senderName: String? = nil, content: String, timestamp: Date, status: String, mediaUrl: String? = nil, mediaType: String? = nil, readBy: [String] = [], deliveredTo: [String] = [], isFromCurrentUser: Bool = false) {
+    init(id: String, conversationId: String, senderId: String, senderName: String? = nil, content: String, timestamp: Date, status: String, mediaUrl: String? = nil, mediaType: String? = nil, readBy: [String] = [], deliveredTo: [String] = [], language: String? = nil, isFromCurrentUser: Bool = false) {
         self.id = id
         self.conversationId = conversationId
         self.senderId = senderId
@@ -33,6 +34,7 @@ final class MessageModel {
         self.status = status
         self.mediaUrl = mediaUrl
         self.mediaType = mediaType
+        self.language = language
         self.isFromCurrentUser = isFromCurrentUser
         
         // Encode arrays to Data
@@ -75,6 +77,7 @@ final class MessageModel {
             mediaType: message.mediaType,
             readBy: message.readBy,
             deliveredTo: message.deliveredTo,
+            language: message.language,
             isFromCurrentUser: message.isFromCurrentUser
         )
     }
@@ -93,6 +96,7 @@ final class MessageModel {
             mediaType: mediaType,
             readBy: readBy,
             deliveredTo: deliveredTo,
+            language: language,
             isFromCurrentUser: isFromCurrentUser
         )
     }

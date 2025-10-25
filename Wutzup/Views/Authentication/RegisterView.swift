@@ -128,6 +128,7 @@ struct RegisterView: View {
                 .padding(.top, 12)
                 }
             }
+            .scrollIndicators(.hidden)
         }
         .navigationTitle("Sign Up")
         .navigationBarTitleDisplayMode(.inline)

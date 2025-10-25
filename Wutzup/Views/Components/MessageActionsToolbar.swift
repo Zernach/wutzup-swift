@@ -400,6 +400,7 @@ struct TranslationResultView: View {
                 }
                 .padding()
             }
+            .scrollIndicators(.hidden)
             .navigationTitle("Translation")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -458,6 +459,7 @@ struct ContextResultView: View {
                 }
                 .padding()
             }
+            .scrollIndicators(.hidden)
             .navigationTitle("Context")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

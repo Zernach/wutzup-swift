@@ -19,10 +19,12 @@ struct ConversationView: View {
     @Environment(\.scenePhase) private var scenePhase
     
     let userService: UserService
+    let chatService: ChatService
     
-    init(viewModel: ConversationViewModel, userService: UserService) {
+    init(viewModel: ConversationViewModel, userService: UserService, chatService: ChatService) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.userService = userService
+        self.chatService = chatService
     }
     
     var body: some View {
@@ -75,6 +77,7 @@ struct ConversationView: View {
                     .padding(.vertical)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                .scrollIndicators(.hidden)
                 .onAppear {
                     scrollProxy = proxy
                     scrollToBottom()
@@ -147,7 +150,8 @@ struct ConversationView: View {
             GroupMembersView(
                 conversation: viewModel.conversation,
                 userService: userService,
-                presenceService: viewModel.presenceService
+                presenceService: viewModel.presenceService,
+                chatService: chatService
             )
         }
         .sheet(isPresented: $viewModel.showingAISuggestion) {
@@ -272,7 +276,7 @@ struct ConversationView: View {
             modelContainer: container
         )
         let previewState = AppState(modelContainer: container)
-        ConversationView(viewModel: viewModel, userService: previewUser)
+        ConversationView(viewModel: viewModel, userService: previewUser, chatService: PreviewChatService())
             .environmentObject(previewState)
     }
 }
@@ -412,4 +416,37 @@ private final class PreviewUserServiceForConversation: UserService {
     func updateProfileImageUrl(userId: String, imageUrl: String?) async throws { }
     
     func updateLanguages(userId: String, primaryLanguageCode: String?, learningLanguageCode: String?) async throws { }
+}
+
+private final class PreviewChatService: ChatService {
+    func createConversation(withUserIds userIds: [String], isGroup: Bool, groupName: String?, participantNames: [String: String]) async throws -> Conversation {
+        return Conversation(
+            participantIds: userIds,
+            participantNames: participantNames,
+            isGroup: isGroup,
+            groupName: groupName
+        )
+    }
+    
+    func fetchConversations(userId: String) async throws -> [Conversation] {
+        return []
+    }
+    
+    func observeConversations(userId: String) -> AsyncStream<Conversation> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+    
+    func fetchOrCreateDirectConversation(userId: String, otherUserId: String, participantNames: [String: String]) async throws -> Conversation {
+        return Conversation(
+            participantIds: [userId, otherUserId],
+            participantNames: participantNames,
+            isGroup: false
+        )
+    }
+    
+    func updateConversation(_ conversation: Conversation) async throws {
+        // Preview implementation - no-op
+    }
 }

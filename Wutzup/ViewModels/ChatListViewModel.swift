@@ -16,7 +16,7 @@ class ChatListViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var typingStatus: [String: [String: Bool]] = [:] // conversationId -> [userId: isTyping]
 
-    private let chatService: ChatService
+    let chatService: ChatService
     private let authService: AuthenticationService
     private let userService: UserService?
     private let presenceService: PresenceService?

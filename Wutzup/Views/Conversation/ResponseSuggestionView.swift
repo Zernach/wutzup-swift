@@ -136,6 +136,7 @@ struct ResponseSuggestionView: View {
                     Spacer()
                 }
             }
+            .scrollIndicators(.hidden)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {

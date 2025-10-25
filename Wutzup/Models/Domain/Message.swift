@@ -28,6 +28,7 @@ struct Message: Identifiable, Codable, Hashable, Sendable {
     var mediaType: String?
     var readBy: [String]
     var deliveredTo: [String]
+    var language: String?
     
     var isFromCurrentUser: Bool = false
     
@@ -42,6 +43,7 @@ struct Message: Identifiable, Codable, Hashable, Sendable {
          mediaType: String? = nil,
          readBy: [String] = [],
          deliveredTo: [String] = [],
+         language: String? = nil,
          isFromCurrentUser: Bool = false) {
         self.id = id
         self.conversationId = conversationId
@@ -54,6 +56,7 @@ struct Message: Identifiable, Codable, Hashable, Sendable {
         self.mediaType = mediaType
         self.readBy = readBy
         self.deliveredTo = deliveredTo
+        self.language = language
         self.isFromCurrentUser = isFromCurrentUser
     }
     
@@ -85,6 +88,7 @@ struct Message: Identifiable, Codable, Hashable, Sendable {
         self.mediaType = data["mediaType"] as? String
         self.readBy = data["readBy"] as? [String] ?? []
         self.deliveredTo = data["deliveredTo"] as? [String] ?? []
+        self.language = data["language"] as? String
         
         if let currentUserId = currentUserId {
             self.isFromCurrentUser = senderId == currentUserId
@@ -112,6 +116,9 @@ struct Message: Identifiable, Codable, Hashable, Sendable {
         }
         if let mediaType = mediaType {
             data["mediaType"] = mediaType
+        }
+        if let language = language {
+            data["language"] = language
         }
         
         return data

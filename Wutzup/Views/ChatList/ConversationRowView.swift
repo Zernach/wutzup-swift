@@ -309,6 +309,7 @@ struct ConversationRowView: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }
+    .scrollIndicators(.hidden)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(AppConstants.Colors.background)
 }

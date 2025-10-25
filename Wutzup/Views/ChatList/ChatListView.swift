@@ -13,6 +13,7 @@ struct ChatListView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel: ChatListViewModel
     @State private var navigationPath = NavigationPath()
+    @State private var showTooltip = false
 
     init(viewModel: ChatListViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -29,69 +30,71 @@ struct ChatListView: View {
                     if viewModel.isLoading {
                         ProgressView("Loading conversations...")
                             .tint(AppConstants.Colors.accent)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .padding(.top, 60)
+                            .padding(.horizontal)
                     } else if viewModel.conversations.isEmpty {
                         emptyStateView
                     } else {
                         conversationListView
                     }
                 }
+                
+                // Floating Action Button with Tooltip
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 0) {
+                            if showTooltip {
+                                GlassTooltip(
+                                    isPresented: $showTooltip,
+                                    onNewChat: openNewChat,
+                                    onNewGroup: openNewGroup
+                                )
+                                .padding(.bottom, 8)
+                                .transition(.scale(scale: 0.8, anchor: .bottom).combined(with: .opacity))
+                            }
+                            
+                            GlassFloatingActionButton(
+                                isExpanded: showTooltip,
+                                action: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        showTooltip.toggle()
+                                    }
+                                }
+                            )
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
+                }
             }
             .navigationTitle("Chats")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        // Section 1: Regular chats
-                        Button(action: openNewChat) {
-                            Label("New Chat", systemImage: "square.and.pencil")
-                        }
-
-                        Button(action: openNewGroup) {
-                            Label("New Group", systemImage: "person.3")
-                        }
-
-                        Divider()
-
-                        // Section 2: Tutor chats
-                        Button(action: openNewTutor) {
-                            Label("New Tutor", systemImage: "brain.head.profile")
-                        }
-
-                        Button(action: openNewTutorGroup) {
-                            Label("New Tutor Group", systemImage: "person.3.fill")
-                        }
-
-                        Divider()
-
-                        // Section 3: Account and logout
-                        Button(action: openAccount) {
-                            Label("Account", systemImage: "person.circle")
-                        }
-
-                        Button(role: .destructive, action: {
-                            Task { @MainActor in
-                                try? await appState.authService.logout()
-                            }
-                        }) {
-                            Label("Log Out", systemImage: "arrow.right.square")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .foregroundColor(AppConstants.Colors.textPrimary)
+                    Button(action: openAccount) {
+                        UserProfileImageView(
+                            user: appState.currentUser,
+                            size: 32,
+                            showOnlineStatus: false,
+                            presenceService: nil
+                        )
                     }
                 }
             }
             .navigationDestination(for: Conversation.self) { conversation in
                 ConversationView(
                     viewModel: appState.makeConversationViewModel(for: conversation),
-                    userService: appState.userService
+                    userService: appState.userService,
+                    chatService: viewModel.chatService
                 )
             }
             .navigationDestination(for: NewChatRoute.self) { _ in
-                NewChatView(
+                TabbedNewChatView(
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
                     presenceService: appState.presenceService,
-                    tutorFilter: false,
                     modelContainer: appState.modelContainer,
                     createOrFetchConversation: { @MainActor user in
                         // Get current user
@@ -112,11 +115,10 @@ struct ChatListView: View {
                 )
             }
             .navigationDestination(for: NewGroupRoute.self) { _ in
-                NewGroupView(
+                TabbedNewGroupView(
                     userService: appState.userService,
                     currentUserId: appState.currentUser?.id,
                     chatListViewModel: viewModel,
-                    tutorFilter: false,
                     modelContainer: appState.modelContainer,
                     onGroupCreated: { conversation in
                         navigateToConversation(conversation)
@@ -126,50 +128,20 @@ struct ChatListView: View {
             .navigationDestination(for: AccountRoute.self) { _ in
                 AccountView(presenceService: appState.presenceService)
             }
-            .navigationDestination(for: NewTutorRoute.self) { _ in
-                NewChatView(
-                    userService: appState.userService,
-                    currentUserId: appState.currentUser?.id,
-                    presenceService: appState.presenceService,
-                    tutorFilter: true,
-                    modelContainer: appState.modelContainer,
-                    createOrFetchConversation: { @MainActor user in
-                        // Get current user
-                        guard let currentUser = appState.currentUser else {
-                            return nil
-                        }
-                        // Call with user properties
-                        return await viewModel.createDirectConversation(
-                            with: user.id,
-                            otherDisplayName: user.displayName,
-                            otherEmail: user.email,
-                            currentUser: currentUser
-                        )
-                    },
-                    onConversationCreated: { conversation in
-                        navigateToConversation(conversation)
-                    }
-                )
-            }
-            .navigationDestination(for: NewTutorGroupRoute.self) { _ in
-                NewGroupView(
-                    userService: appState.userService,
-                    currentUserId: appState.currentUser?.id,
-                    chatListViewModel: viewModel,
-                    tutorFilter: true,
-                    modelContainer: appState.modelContainer,
-                    onGroupCreated: { conversation in
-                        navigateToConversation(conversation)
-                    }
-                )
-            }
         }
         .toolbarBackground(AppConstants.Colors.background, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .onTapGesture {
+            if showTooltip {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    showTooltip = false
+                }
+            }
+        }
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
+        VStack(alignment: .center, spacing: 20) {
             Image(systemName: "message.circle")
                 .resizable()
                 .scaledToFit()
@@ -185,7 +157,9 @@ struct ChatListView: View {
                 .foregroundColor(AppConstants.Colors.textSecondary)
                 .multilineTextAlignment(.center)
         }
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, 60)
+        .padding(.horizontal)
     }
 
     private var conversationListView: some View {
@@ -241,13 +215,6 @@ struct ChatListView: View {
         navigationPath.append(AccountRoute())
     }
 
-    private func openNewTutor() {
-        navigationPath.append(NewTutorRoute())
-    }
-
-    private func openNewTutorGroup() {
-        navigationPath.append(NewTutorGroupRoute())
-    }
 
     @MainActor
     private func navigateToConversation(_ conversation: Conversation) {
@@ -299,8 +266,6 @@ struct ConversationRowButtonStyle: ButtonStyle {
 private struct NewChatRoute: Hashable {}
 private struct NewGroupRoute: Hashable {}
 private struct AccountRoute: Hashable {}
-private struct NewTutorRoute: Hashable {}
-private struct NewTutorGroupRoute: Hashable {}
 
 private final class PreviewChatService: ChatService {
     func createConversation(withUserIds userIds: [String], isGroup: Bool, groupName: String?, participantNames: [String : String]) async throws -> Conversation {

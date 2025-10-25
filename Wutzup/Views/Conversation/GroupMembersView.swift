@@ -12,10 +12,12 @@ struct GroupMembersView: View {
     let conversation: Conversation
     let userService: UserService
     let presenceService: PresenceService
+    let chatService: ChatService
     
     @State private var members: [User] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showingAddMembers = false
     
     var body: some View {
         NavigationStack {
@@ -36,35 +38,69 @@ struct GroupMembersView: View {
                             .padding(.horizontal)
                     }
                 } else {
-                    List {
-                        Section {
-                            ForEach(members) { member in
-                                HStack(spacing: 12) {
-                                    // Profile Image with online status
-                                    UserProfileImageView(
-                                        user: member,
-                                        size: 44,
-                                        showOnlineStatus: true,
-                                        presenceService: presenceService
-                                    )
-                                    
-                                    // Member Info
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(member.displayName)
-                                            .font(.body)
-                                            .fontWeight(.medium)
+                    VStack(spacing: 0) {
+                        List {
+                            Section {
+                                ForEach(members) { member in
+                                    HStack(spacing: 12) {
+                                        // Profile Image with online status
+                                        UserProfileImageView(
+                                            user: member,
+                                            size: 44,
+                                            showOnlineStatus: true,
+                                            presenceService: presenceService
+                                        )
                                         
-                                        Text(member.email)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                        // Member Info
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(member.displayName)
+                                                .font(.body)
+                                                .fontWeight(.medium)
+                                            
+                                            Text(member.email)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        Spacer()
                                     }
-                                    
-                                    Spacer()
+                                    .padding(.vertical, 4)
                                 }
-                                .padding(.vertical, 4)
+                            } header: {
+                                Text("\(members.count) Members")
                             }
-                        } header: {
-                            Text("\(members.count) Members")
+                        }
+                        .listStyle(.plain)
+                        
+                        // Add Members Button
+                        if conversation.isGroup {
+                            VStack(spacing: 0) {
+                                Divider()
+                                    .background(AppConstants.Colors.border)
+                                
+                                Button {
+                                    showingAddMembers = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "person.badge.plus")
+                                            .font(.title2)
+                                            .foregroundColor(AppConstants.Colors.accent)
+                                        
+                                        Text("Add Members")
+                                            .font(.headline)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(AppConstants.Colors.accent)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 56)
+                                    .background(AppConstants.Colors.surface)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 0)
+                                            .stroke(AppConstants.Colors.border, lineWidth: 0.5)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
                 }
@@ -80,6 +116,19 @@ struct GroupMembersView: View {
             }
             .task {
                 await loadMembers()
+            }
+            .sheet(isPresented: $showingAddMembers) {
+                AddMembersView(
+                    conversation: conversation,
+                    userService: userService,
+                    chatService: chatService,
+                    onMembersAdded: { newMembers in
+                        // Refresh the members list
+                        Task {
+                            await loadMembers()
+                        }
+                    }
+                )
             }
         }
     }
@@ -124,7 +173,8 @@ struct GroupMembersView: View {
     GroupMembersView(
         conversation: previewConversation,
         userService: PreviewUserService(),
-        presenceService: PreviewPresenceService()
+        presenceService: PreviewPresenceService(),
+        chatService: PreviewChatService()
     )
 }
 
@@ -203,6 +253,39 @@ private final class PreviewPresenceService: PresenceService {
         AsyncStream { continuation in
             continuation.finish()
         }
+    }
+}
+
+private final class PreviewChatService: ChatService {
+    func createConversation(withUserIds userIds: [String], isGroup: Bool, groupName: String?, participantNames: [String: String]) async throws -> Conversation {
+        return Conversation(
+            participantIds: userIds,
+            participantNames: participantNames,
+            isGroup: isGroup,
+            groupName: groupName
+        )
+    }
+    
+    func fetchConversations(userId: String) async throws -> [Conversation] {
+        return []
+    }
+    
+    func observeConversations(userId: String) -> AsyncStream<Conversation> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+    
+    func fetchOrCreateDirectConversation(userId: String, otherUserId: String, participantNames: [String: String]) async throws -> Conversation {
+        return Conversation(
+            participantIds: [userId, otherUserId],
+            participantNames: participantNames,
+            isGroup: false
+        )
+    }
+    
+    func updateConversation(_ conversation: Conversation) async throws {
+        // Preview implementation - no-op
     }
 }
 

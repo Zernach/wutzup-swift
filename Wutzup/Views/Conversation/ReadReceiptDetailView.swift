@@ -171,6 +171,7 @@ struct ReadReceiptDetailView: View {
                 }
                 .padding()
             }
+            .scrollIndicators(.hidden)
             .navigationTitle("Message Info")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -100,8 +100,12 @@ class UserPickerViewModel: ObservableObject {
         }
         
         return users.filter { user in
+            // Search in display name
             user.displayName.localizedCaseInsensitiveContains(trimmedQuery) ||
-            user.email.localizedCaseInsensitiveContains(trimmedQuery)
+            // Search in email
+            user.email.localizedCaseInsensitiveContains(trimmedQuery) ||
+            // Search in personality (if available)
+            (user.personality?.localizedCaseInsensitiveContains(trimmedQuery) ?? false)
         }
     }
 }

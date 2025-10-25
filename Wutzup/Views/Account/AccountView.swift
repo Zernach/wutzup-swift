@@ -56,6 +56,7 @@ struct AccountView: View {
     @State private var isRequestingPermission = false
     @State private var showingTokenCopied = false
     @State private var personalityText: String = ""
+    @State private var originalPersonalityText: String = ""
     @State private var isSavingPersonality = false
     @State private var showingPersonalitySaved = false
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -135,37 +136,49 @@ struct AccountView: View {
 
                         VStack(spacing: 12) {
                             // Primary Language Picker
-                            VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Primary Language")
+                                    .font(.body)
+                                    .foregroundColor(AppConstants.Colors.textPrimary)
+                                
+                                Spacer()
+                                
                                 Picker("Primary Language", selection: $primaryLanguageCode) {
                                     ForEach(SupportedLanguage.allCases, id: \.rawValue) { lang in
                                         Text(lang.displayName).tag(lang.rawValue)
                                     }
                                 }
-                                .pickerStyle(.navigationLink)
+                                .pickerStyle(.menu)
                                 .tint(AppConstants.Colors.textPrimary)
                                 .onChange(of: primaryLanguageCode) { _, _ in
                                     saveLanguages()
                                 }
                             }
                             .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 16)
                             .background(AppConstants.Colors.surface)
 
                             // Learning Language Picker
-                            VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Learning Language")
+                                    .font(.body)
+                                    .foregroundColor(AppConstants.Colors.textPrimary)
+                                
+                                Spacer()
+                                
                                 Picker("Learning Language", selection: $learningLanguageCode) {
                                     ForEach(SupportedLanguage.allCases, id: \.rawValue) { lang in
                                         Text(lang.displayName).tag(lang.rawValue)
                                     }
                                 }
-                                .pickerStyle(.navigationLink)
+                                .pickerStyle(.menu)
                                 .tint(AppConstants.Colors.textPrimary)
                                 .onChange(of: learningLanguageCode) { _, _ in
                                     saveLanguages()
                                 }
                             }
                             .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 16)
                             .background(AppConstants.Colors.surface)
 
                             if isSavingLanguages {
@@ -232,25 +245,25 @@ struct AccountView: View {
                                                 .font(.caption)
                                                 .foregroundColor(.green)
                                         }
-                                    }
-                                    
-                                    Button(action: {
-                                        savePersonality()
-                                    }) {
-                                        if isSavingPersonality {
-                                            ProgressView()
-                                                .tint(AppConstants.Colors.textPrimary)
-                                        } else {
-                                            Text("Save")
-                                                .font(.body.bold())
-                                                .foregroundColor(.white)
-                                                .padding(.horizontal, 20)
-                                                .padding(.vertical, 8)
-                                                .background(AppConstants.Colors.accent)
-                                                .cornerRadius(8)
+                                    } else if hasPersonalityChanged {
+                                        Button(action: {
+                                            savePersonality()
+                                        }) {
+                                            if isSavingPersonality {
+                                                ProgressView()
+                                                    .tint(AppConstants.Colors.textPrimary)
+                                            } else {
+                                                Text("Save")
+                                                    .font(.body.bold())
+                                                    .foregroundColor(.white)
+                                                    .padding(.horizontal, 20)
+                                                    .padding(.vertical, 8)
+                                                    .background(AppConstants.Colors.accent)
+                                                    .cornerRadius(8)
+                                            }
                                         }
+                                        .disabled(isSavingPersonality)
                                     }
-                                    .disabled(isSavingPersonality)
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -413,6 +426,31 @@ struct AccountView: View {
                     
                     // Account Actions Section
                     VStack(spacing: 0) {
+                        // Logout Button
+                        Button(action: {
+                            logout()
+                        }) {
+                            HStack {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    .foregroundColor(AppConstants.Colors.textPrimary)
+                                
+                                Text("Logout")
+                                    .foregroundColor(AppConstants.Colors.textPrimary)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(AppConstants.Colors.textSecondary)
+                                    .font(.system(size: 14))
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                            .background(AppConstants.Colors.surface)
+                        }
+                        
+                        Divider()
+                            .background(AppConstants.Colors.border)
+                        
                         // Delete Account Button
                         Button(action: {
                             showingDeleteConfirmation = true
@@ -444,6 +482,7 @@ struct AccountView: View {
                     .padding(.top, 20)
                 }
             }
+            .scrollIndicators(.hidden)
         }
         .navigationTitle("Account")
         .navigationBarTitleDisplayMode(.inline)
@@ -485,6 +524,10 @@ struct AccountView: View {
     }
     
     // MARK: - Computed Properties
+    
+    private var hasPersonalityChanged: Bool {
+        return personalityText.trimmingCharacters(in: .whitespacesAndNewlines) != originalPersonalityText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
     
     private var notificationStatusIcon: String {
         switch notificationStatus {
@@ -603,6 +646,19 @@ struct AccountView: View {
         #endif
     }
     
+    private func logout() {
+        Task { @MainActor in
+            do {
+                try await appState.authService.logout()
+                // User will be automatically logged out via auth state listener
+                dismiss()
+            } catch {
+                // Handle logout error if needed
+                print("Logout error: \(error.localizedDescription)")
+            }
+        }
+    }
+    
     private func deleteAccount() {
         isDeleting = true
         
@@ -620,7 +676,9 @@ struct AccountView: View {
     }
     
     private func loadPersonality() {
-        personalityText = appState.currentUser?.personality ?? ""
+        let currentPersonality = appState.currentUser?.personality ?? ""
+        personalityText = currentPersonality
+        originalPersonalityText = currentPersonality
     }
     
     private func savePersonality() {
@@ -647,6 +705,9 @@ struct AccountView: View {
                 isSavingPersonality = false
                 showingPersonalitySaved = true
                 
+                // Update the original personality text to match the saved value
+                originalPersonalityText = personalityToSave ?? ""
+                
                 // Hide the "Saved" message after 2 seconds
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 showingPersonalitySaved = false
@@ -663,7 +724,9 @@ struct AccountView: View {
             primaryLanguageCode = userPrimary
         } else {
             if let deviceCode = Locale.current.language.languageCode?.identifier {
-                primaryLanguageCode = deviceCode
+                // Check if device language is supported, otherwise default to English
+                let supportedCodes = Set(SupportedLanguage.allCases.map { $0.rawValue })
+                primaryLanguageCode = supportedCodes.contains(deviceCode) ? deviceCode : SupportedLanguage.english.rawValue
             } else {
                 primaryLanguageCode = SupportedLanguage.english.rawValue
             }

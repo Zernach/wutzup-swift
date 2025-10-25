@@ -491,5 +491,6 @@ struct ParagraphHeightPreferenceKey: PreferenceKey {
         }
         .padding()
     }
+    .scrollIndicators(.hidden)
     .background(AppConstants.Colors.background)
 }
