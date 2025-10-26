@@ -8,13 +8,31 @@
 }
 
 .content {
-  max-width: 600px;
+  max-width: 1000px;
   text-align: center;
 }
 
-.emoji {
-  font-size: 80px;
+.app-icon {
   margin-bottom: 20px;
+  animation: float 3s ease-in-out infinite;
+}
+
+.icon-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.icon-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 40px rgba(77, 163, 255, 0.2);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
 }
 
 .title {
@@ -36,6 +54,50 @@
   color: #909090;
   line-height: 28px;
   margin-bottom: 40px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  margin: 50px 0;
+  padding: 0 20px;
+}
+
+.feature {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 30px 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.feature:hover {
+  transform: translateY(-5px);
+  border-color: rgba(77, 163, 255, 0.3);
+  box-shadow: 0 10px 30px rgba(77, 163, 255, 0.1);
+}
+
+.feature-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.feature h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 15px;
+}
+
+.feature p {
+  font-size: 14px;
+  color: #b0b0b0;
+  line-height: 22px;
+  margin: 0;
 }
 
 .footer {
@@ -77,5 +139,61 @@
 .company-link:hover {
   color: #4da3ff;
   text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .content {
+    max-width: 100%;
+  }
+  
+  .title {
+    font-size: 36px;
+  }
+  
+  .subtitle {
+    font-size: 20px;
+  }
+  
+  .description {
+    font-size: 16px;
+    margin-bottom: 30px;
+  }
+  
+  .icon-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+  }
+  
+  .features {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin: 30px 0;
+    padding: 0 10px;
+  }
+  
+  .feature {
+    padding: 20px 15px;
+  }
+  
+  .feature-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+  }
+  
+  .feature h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  
+  .feature p {
+    font-size: 13px;
+    line-height: 20px;
+  }
 }
 

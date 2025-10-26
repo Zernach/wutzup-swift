@@ -11,15 +11,55 @@ export default function HomePage() {
 
             <div className="container">
                 <div className="content">
-                    <div className="emoji">💬</div>
-                    <h1 className="title">Wutzup AI</h1>
+                    <div className="app-icon">
+                        <img src="/wutzup-icon.jpg" alt="Wutzup International" className="icon-image" />
+                    </div>
+                    <h1 className="title">Wutzup International</h1>
                     <h2 className="subtitle">
-                        Simple, secure messaging for everyone
+                        Language Learning & Global Communication
                     </h2>
                     <p className="description">
-                        Connect with friends and family through instant messaging.
-                        Fast, reliable, and built with privacy in mind.
+                        Connect with AI language tutors, practice conversations, and communicate globally.
+                        Perfect for language learners and international travelers.
                     </p>
+
+                    <div className="features">
+                        <div className="feature">
+                            <div className="feature-icon">🎓</div>
+                            <h3>AI Language Tutors</h3>
+                            <p>Practice with native-speaking AI tutors in 20+ languages including Spanish, French, German, Japanese, and more.</p>
+                        </div>
+
+                        <div className="feature">
+                            <div className="feature-icon">✈️</div>
+                            <h3>Travel-Ready Messaging</h3>
+                            <p>Stay connected with friends and family while traveling internationally with reliable offline messaging.</p>
+                        </div>
+
+                        <div className="feature">
+                            <div className="feature-icon">🔄</div>
+                            <h3>Real-Time Translation</h3>
+                            <p>Get instant translations and context explanations to help you learn and communicate effectively.</p>
+                        </div>
+
+                        <div className="feature">
+                            <div className="feature-icon">👥</div>
+                            <h3>Group Learning</h3>
+                            <p>Create study groups with tutors and practice conversations with multiple participants.</p>
+                        </div>
+
+                        <div className="feature">
+                            <div className="feature-icon">🎬</div>
+                            <h3>Visual Learning</h3>
+                            <p>Generate custom GIFs and visual content to enhance your language learning experience and express yourself creatively.</p>
+                        </div>
+
+                        <div className="feature">
+                            <div className="feature-icon">💡</div>
+                            <h3>Smart Context</h3>
+                            <p>Get AI-powered explanations of conversations, cultural insights, and learning tips to deepen your understanding.</p>
+                        </div>
+                    </div>
 
                     <div className="footer">
                         <Link to="/support" className="link">

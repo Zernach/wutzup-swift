@@ -8,8 +8,8 @@ interface SEOProps {
 }
 
 export default function SEO({
-    title = 'Wutzup AI - Simple, secure messaging for everyone',
-    description = 'Connect with friends and family through instant messaging. Fast, reliable, and built with privacy in mind.',
+    title = 'Wutzup International - Language Learning & Global Communication',
+    description = 'Connect with AI language tutors, practice conversations, and communicate globally. Perfect for language learners and international travelers.',
     url = 'https://wutzup.archlife.org/',
     image = '/wutzup-icon.jpg'
 }: SEOProps) {
