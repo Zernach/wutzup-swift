@@ -329,9 +329,11 @@ class FirestoreSeeder:
                 
                 message_data = {
                     "id": msg_id,
+                    "conversationId": conv_id,  # Required by Swift app
                     "senderId": sender,
                     "content": content,
                     "timestamp": SERVER_TIMESTAMP,
+                    "status": "sent",  # Required by Swift app
                     "readBy": read_by,
                     "deliveredTo": participants
                 }
