@@ -13,7 +13,10 @@ firebase/
 ├── firestore.rules            # Firestore security rules
 ├── firestore.indexes.json     # Firestore database indexes
 ├── seed_database.py           # Database seeding script (auto-runs on deploy!)
-├── seed_tutors.py             # Language tutor seeding script (NEW!)
+├── seed_tutors.py             # Language tutor seeding script
+├── update_user_personalities.py # Script to assign personalities to non-tutor users
+├── generate_demo_users.py     # Demo user generation script for demo videos
+├── DEMO_USERS_README.md      # Documentation for demo user generation
 └── functions/                 # Cloud Functions
     ├── main.py                # Cloud Functions implementation
     ├── requirements.txt       # Python dependencies
@@ -454,6 +457,71 @@ gcloud firestore export gs://YOUR_BUCKET_NAME
 # Import Firestore data
 gcloud firestore import gs://YOUR_BUCKET_NAME/[PATH]
 ```
+
+## 🎭 User Personality Management
+
+### Update User Personalities
+
+The `update_user_personalities.py` script assigns diverse personality values to all non-tutor users, helping the AI generate responses that match their communication style.
+
+```bash
+# Preview changes (recommended first)
+python update_user_personalities.py --project-id YOUR_PROJECT_ID --dry-run
+
+# Apply changes to production
+python update_user_personalities.py --project-id YOUR_PROJECT_ID
+
+# Use with emulator
+python update_user_personalities.py --emulator --dry-run
+```
+
+**Features:**
+- ✅ Assigns diverse personality templates to all non-tutor users
+- ✅ Preserves existing personalities (optional)
+- ✅ Dry-run mode for safe preview
+- ✅ Detailed progress reporting
+- ✅ Works with emulator or production
+
+**Personality Templates Include:**
+- Professional & Business-oriented
+- Creative & Artistic  
+- Social & Community-focused
+- Intellectual & Academic
+- Adventurous & Active
+- Tech & Innovation
+- Relaxed & Easygoing
+- Food & Lifestyle
+- Sports & Competition
+- Nature & Environment
+- Cultural & Global
+- Humor & Entertainment
+- Introspective & Thoughtful
+
+## 🎬 Demo User Generation
+
+For demo videos and presentations, use the demo user generation script to create realistic test data:
+
+```bash
+# Generate demo users with diverse international backgrounds
+python3 generate_demo_users.py --project-id YOUR_PROJECT_ID
+
+# Or use with emulator
+python3 generate_demo_users.py --emulator
+```
+
+**Creates:**
+- 3 diverse international users (UAE, Japan, Brazil)
+- Dozens of sample conversations
+- **~50% foreign language messages** (Arabic, Japanese, Portuguese) with proper language tagging
+- Research results in conversations
+- Group chats with cultural exchange topics
+
+**Login Credentials:**
+- Aisha Al-Zahra: `aisha.alzahra@demo.wutzup.app` / `password`
+- Kenji Nakamura: `kenji.nakamura@demo.wutzup.app` / `password`  
+- Isabella Santos: `isabella.santos@demo.wutzup.app` / `password`
+
+See [DEMO_USERS_README.md](DEMO_USERS_README.md) for complete documentation.
 
 ## 🐛 Troubleshooting
 
