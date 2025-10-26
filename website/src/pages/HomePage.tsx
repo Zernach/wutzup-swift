@@ -23,6 +23,21 @@ export default function HomePage() {
                         Perfect for language learners and international travelers.
                     </p>
 
+                    <div className="download-section">
+                        <a
+                            href="https://apps.apple.com/us/app/wutzup/id6754276286"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="app-store-link"
+                        >
+                            <img
+                                src="https://raw.githubusercontent.com/landscapesupply/images/refs/heads/main/app-store/download-on-apple-apple-store-landscape-supply-marketplace-buy-delivery-mulch-rock-sod-gravel-stone-near-me.png"
+                                alt="Download on App Store"
+                                className="app-store-badge"
+                            />
+                        </a>
+                    </div>
+
                     <div className="features">
                         <div className="feature">
                             <div className="feature-icon">🎓</div>
@@ -69,6 +84,21 @@ export default function HomePage() {
                         <Link to="/privacy-policy" className="link">
                             Privacy Policy
                         </Link>
+                    </div>
+
+                    <div className="footer-download">
+                        <a
+                            href="https://apps.apple.com/us/app/wutzup/id6754276286"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="app-store-link-small"
+                        >
+                            <img
+                                src="https://raw.githubusercontent.com/landscapesupply/images/refs/heads/main/app-store/download-on-apple-apple-store-landscape-supply-marketplace-buy-delivery-mulch-rock-sod-gravel-stone-near-me.png"
+                                alt="Download on App Store"
+                                className="app-store-badge-small"
+                            />
+                        </a>
                     </div>
 
                     <div className="copyright">

@@ -56,6 +56,30 @@
   margin-bottom: 40px;
 }
 
+.download-section {
+  margin: 40px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.app-store-link {
+  display: inline-block;
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+
+.app-store-link:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+.app-store-badge {
+  height: 90px;
+  width: auto;
+  display: block;
+}
+
 .features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -113,6 +137,30 @@
   font-size: 16px;
 }
 
+.footer-download {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.app-store-link-small {
+  display: inline-block;
+  transition: all 0.3s ease;
+  opacity: 0.85;
+}
+
+.app-store-link-small:hover {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.app-store-badge-small {
+  height: 35px;
+  width: auto;
+  display: block;
+}
+
 .link {
   font-size: 16px;
   color: #4da3ff;
@@ -164,6 +212,14 @@
     margin-bottom: 30px;
   }
   
+  .download-section {
+    margin: 30px 0;
+  }
+  
+  .app-store-badge {
+    height: 70px;
+  }
+  
   .icon-image {
     width: 60px;
     height: 60px;
@@ -194,6 +250,14 @@
   .feature p {
     font-size: 13px;
     line-height: 20px;
+  }
+  
+  .footer-download {
+    margin-top: 20px;
+  }
+  
+  .app-store-badge-small {
+    height: 30px;
   }
 }
 
