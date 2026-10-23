@@ -20,10 +20,12 @@ final class ConversationModel {
     var lastMessageTimestamp: Date?
     var createdAt: Date
     var updatedAt: Date
+    var revision: Int = 1
     var unreadCount: Int
     
-    init(id: String, participantIds: [String], participantNames: [String: String] = [:], isGroup: Bool = false, groupName: String? = nil, groupImageUrl: String? = nil, lastMessage: String? = nil, lastMessageTimestamp: Date? = nil, createdAt: Date = Date(), updatedAt: Date = Date(), unreadCount: Int = 0) {
+    init(id: String, participantIds: [String], participantNames: [String: String] = [:], isGroup: Bool = false, groupName: String? = nil, groupImageUrl: String? = nil, lastMessage: String? = nil, lastMessageTimestamp: Date? = nil, createdAt: Date = Date(), updatedAt: Date = Date(), unreadCount: Int = 0, revision: Int = 1) {
         self.id = id
+        self.revision = revision
         self.isGroup = isGroup
         self.groupName = groupName
         self.groupImageUrl = groupImageUrl
@@ -72,7 +74,7 @@ final class ConversationModel {
             lastMessageTimestamp: conversation.lastMessageTimestamp,
             createdAt: conversation.createdAt,
             updatedAt: conversation.updatedAt,
-            unreadCount: conversation.unreadCount
+            unreadCount: conversation.unreadCount, revision: conversation.revision
         )
     }
     
@@ -89,7 +91,7 @@ final class ConversationModel {
             lastMessageTimestamp: lastMessageTimestamp,
             createdAt: createdAt,
             updatedAt: updatedAt,
-            unreadCount: unreadCount
+            unreadCount: unreadCount, revision: revision
         )
     }
 }

@@ -10,6 +10,6 @@ import Foundation
 protocol NotificationService: AnyObject {
     func requestPermission() async throws -> Bool
     func registerDeviceToken(_ token: Data) async throws
-    func updateFCMToken(userId: String, token: String) async throws
+    func updateDeviceToken(userId: String, token: String) async throws
 }
 

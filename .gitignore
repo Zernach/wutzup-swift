@@ -1,4 +1,6 @@
-wutzup/Resources/Info.plist
+Wutzup/Resources/Info.plist
 .DS_Store
 *.xcuserstate
 build
+build-archlife/
+/.state/

@@ -410,7 +410,7 @@ class ChatListViewModel: ObservableObject {
 
         let participantIds = Array(participants).sorted()
         
-        // Final safety check - must have at least 2 participants total for Firestore rules
+        // Final safety check - must have at least 2 participants total for server validation
         guard participantIds.count >= 2 else {
             errorMessage = "A conversation must have at least 2 participants."
             return nil

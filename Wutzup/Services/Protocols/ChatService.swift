@@ -12,5 +12,12 @@ protocol ChatService: AnyObject {
     func fetchConversations(userId: String) async throws -> [Conversation]
     func observeConversations(userId: String) -> AsyncStream<Conversation>
     func fetchOrCreateDirectConversation(userId: String, otherUserId: String, participantNames: [String: String]) async throws -> Conversation
+    func addMembers(conversationId: String, userIds: [String]) async throws
     func updateConversation(_ conversation: Conversation) async throws
+}
+
+extension ChatService {
+    func addMembers(conversationId: String, userIds: [String]) async throws {
+        throw NSError(domain: "WutzupPreview", code: 503, userInfo: [NSLocalizedDescriptionKey: "Member changes are unavailable in this preview."])
+    }
 }

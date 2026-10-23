@@ -1,5 +1,5 @@
 //
-//  FirebaseAIService.swift
+//  ArchlifeAIService.swift
 //  Wutzup
 //
 //  Created on October 21, 2025
@@ -7,16 +7,14 @@
 
 import Foundation
 
-class FirebaseAIService: AIService {
+class ArchlifeAIService: AIService {
     private let functionURL: String
-    private let baseFunctionsURL: String
+    private let baseAPIURL: String
     
-    init(functionURL: String = "https://generate-response-suggestions-uv2bm2c2tq-uc.a.run.app",
-         baseFunctionsURL: String = "https://us-central1-wutzup-swift.cloudfunctions.net") {
-        // Cloud Function URL (2nd gen) - deployed via Firebase
-        // Get this URL from: firebase deploy --only functions:generate_response_suggestions
-        self.functionURL = functionURL
-        self.baseFunctionsURL = baseFunctionsURL
+    init(functionURL: String? = nil,
+         baseAPIURL: String = ArchlifeWutzupAPI.baseURL) {
+        self.functionURL = functionURL ?? "\(baseAPIURL)/generate_response_suggestions"
+        self.baseAPIURL = baseAPIURL
     }
     
     func generateResponseSuggestions(
@@ -25,14 +23,14 @@ class FirebaseAIService: AIService {
     ) async throws -> AIResponseSuggestion {
         guard let url = URL(string: functionURL) else {
             throw NSError(
-                domain: "FirebaseAIService",
+                domain: "ArchlifeAIService",
                 code: 400,
                 userInfo: [NSLocalizedDescriptionKey: "Invalid URL"]
             )
         }
         
         // Prepare conversation history with current user context
-        let messages = conversationHistory.map { message in
+        let messages = conversationHistory.suffix(10).map { message in
             return [
                 "sender_id": message.senderId,
                 "sender_name": message.senderName ?? "Unknown",
@@ -58,12 +56,12 @@ class FirebaseAIService: AIService {
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
         // Make request
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ArchlifeWutzupAPI.send(request)
         
         // Check response
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(
-                domain: "FirebaseAIService",
+                domain: "ArchlifeAIService",
                 code: 500,
                 userInfo: [NSLocalizedDescriptionKey: "Invalid response"]
             )
@@ -72,7 +70,7 @@ class FirebaseAIService: AIService {
         guard httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw NSError(
-                domain: "FirebaseAIService",
+                domain: "ArchlifeAIService",
                 code: httpResponse.statusCode,
                 userInfo: [NSLocalizedDescriptionKey: "Server error: \(errorMessage)"]
             )
@@ -87,8 +85,8 @@ class FirebaseAIService: AIService {
 
     // MARK: - New Endpoints
     func translateText(text: String, targetLanguage: String) async throws -> (translatedText: String, detectedLanguage: String?) {
-        guard let url = URL(string: "\(baseFunctionsURL)/translate_text") else {
-            throw NSError(domain: "FirebaseAIService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        guard let url = URL(string: "\(baseAPIURL)/translate_text") else {
+            throw NSError(domain: "ArchlifeAIService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -98,10 +96,10 @@ class FirebaseAIService: AIService {
             "target_language": targetLanguage
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ArchlifeWutzupAPI.send(request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw NSError(domain: "FirebaseAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: "Server error: \(errorMessage)"])
+            throw NSError(domain: "ArchlifeAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: "Server error: \(errorMessage)"])
         }
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let translated = json?["translated_text"] as? String ?? ""
@@ -110,8 +108,8 @@ class FirebaseAIService: AIService {
     }
 
     func getMessageContext(selectedMessage: String, conversationHistory: [Message]) async throws -> String {
-        guard let url = URL(string: "\(baseFunctionsURL)/message_context") else {
-            throw NSError(domain: "FirebaseAIService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        guard let url = URL(string: "\(baseAPIURL)/message_context") else {
+            throw NSError(domain: "ArchlifeAIService", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -132,29 +130,29 @@ class FirebaseAIService: AIService {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ArchlifeWutzupAPI.send(request)
         
         
         // Parse JSON response
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw NSError(domain: "FirebaseAIService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON response"])
+            throw NSError(domain: "ArchlifeAIService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON response"])
         }
         
         
         // Check for error response from server
         if let errorMessage = json["error"] as? String {
-            throw NSError(domain: "FirebaseAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            throw NSError(domain: "ArchlifeAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         
         // Check HTTP status
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             let errorMessage = json["error"] as? String ?? "Unknown error"
-            throw NSError(domain: "FirebaseAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            throw NSError(domain: "ArchlifeAIService", code: (response as? HTTPURLResponse)?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
         
         // Extract context
         guard let context = json["context"] as? String, !context.isEmpty else {
-            throw NSError(domain: "FirebaseAIService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Empty context returned from server"])
+            throw NSError(domain: "ArchlifeAIService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Empty context returned from server"])
         }
         return context
     }
@@ -165,9 +163,9 @@ class FirebaseAIService: AIService {
         learningLanguageCode: String,
         primaryLanguageCode: String
     ) async throws -> TutorResponse {
-        guard let url = URL(string: "\(baseFunctionsURL)/language_tutor") else {
+        guard let url = URL(string: "\(baseAPIURL)/language_tutor") else {
             throw NSError(
-                domain: "FirebaseAIService",
+                domain: "ArchlifeAIService",
                 code: 400,
                 userInfo: [NSLocalizedDescriptionKey: "Invalid URL"]
             )
@@ -179,18 +177,18 @@ class FirebaseAIService: AIService {
         
         let body: [String: Any] = [
             "user_message": userMessage,
-            "conversation_history": conversationHistory,
+            "conversation_history": Array(conversationHistory.suffix(10)),
             "learning_language": learningLanguageCode,
             "primary_language": primaryLanguageCode
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ArchlifeWutzupAPI.send(request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NSError(
-                domain: "FirebaseAIService",
+                domain: "ArchlifeAIService",
                 code: 500,
                 userInfo: [NSLocalizedDescriptionKey: "Invalid response"]
             )
@@ -199,7 +197,7 @@ class FirebaseAIService: AIService {
         guard httpResponse.statusCode == 200 else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw NSError(
-                domain: "FirebaseAIService",
+                domain: "ArchlifeAIService",
                 code: httpResponse.statusCode,
                 userInfo: [NSLocalizedDescriptionKey: "Server error: \(errorMessage)"]
             )

@@ -58,7 +58,7 @@ struct MessageBubbleView: View {
                                         isFromCurrentUser: message.isFromCurrentUser
                                     )
                                 } else {
-                                    Text(displayedMessageContent)
+                                    Text(isResearchResult ? WutzupResearchText.attributed(displayedMessageContent) : AttributedString(displayedMessageContent))
                                         .foregroundColor(message.isFromCurrentUser ? .white : AppConstants.Colors.textPrimary)
                                 }
                             

@@ -1,5 +1,5 @@
 //
-//  FirebaseTutorChatService.swift
+//  ArchlifeTutorChatService.swift
 //  Wutzup
 //
 //  Created on October 25, 2025
@@ -7,12 +7,12 @@
 
 import Foundation
 
-/// Firebase implementation of TutorChatService using Cloud Functions
-class FirebaseTutorChatService: TutorChatService {
+/// Archlife API implementation using the existing Firebase identity and Archlife chat data.
+class ArchlifeTutorChatService: TutorChatService {
     private let functionBaseURL: String
     
-    init(projectId: String = "wutzup-swift") {
-        self.functionBaseURL = "https://us-central1-\(projectId).cloudfunctions.net"
+    init(baseURL: String = ArchlifeWutzupAPI.baseURL) {
+        self.functionBaseURL = baseURL
     }
     
     func generateTutorGreeting(
@@ -29,23 +29,16 @@ class FirebaseTutorChatService: TutorChatService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        var body: [String: Any] = [
+        // Archlife resolves names, personality and group context from saved records.
+        let body: [String: Any] = [
             "tutor_id": tutorId,
-            "tutor_personality": tutorPersonality,
-            "tutor_name": tutorName,
-            "user_name": userName,
             "conversation_id": conversationId
         ]
-        
-        // Include group name if provided
-        if let groupName = groupName {
-            body["group_name"] = groupName
-        }
         
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ArchlifeWutzupAPI.send(request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw TutorChatError.invalidResponse
@@ -76,28 +69,16 @@ class FirebaseTutorChatService: TutorChatService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Convert conversation history to JSON-compatible format
-        let historyData = conversationHistory.map { message in
-            [
-                "sender_id": message.senderId,
-                "sender_name": message.senderName,
-                "content": message.content,
-                "timestamp": message.timestamp ?? ""
-            ]
-        }
-        
+        // Conversation history is read by the API after membership validation.
         let body: [String: Any] = [
             "tutor_id": tutorId,
-            "tutor_personality": tutorPersonality,
-            "tutor_name": tutorName,
-            "conversation_history": historyData,
             "conversation_id": conversationId
         ]
         
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ArchlifeWutzupAPI.send(request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw TutorChatError.invalidResponse

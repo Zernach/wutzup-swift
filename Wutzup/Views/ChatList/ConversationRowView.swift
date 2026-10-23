@@ -152,12 +152,12 @@ struct ConversationRowView: View {
     
     // Check if this conversation has a draft message
     private var hasDraft: Bool {
-        DraftManager.shared.loadDraft(for: conversation.id) != nil
+        DraftManager(userID: currentUserId).loadDraft(for: conversation.id) != nil
     }
     
     // Preview of draft message (first 50 characters)
     private var draftPreview: String {
-        guard let draft = DraftManager.shared.loadDraft(for: conversation.id) else {
+        guard let draft = DraftManager(userID: currentUserId).loadDraft(for: conversation.id) else {
             return ""
         }
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)

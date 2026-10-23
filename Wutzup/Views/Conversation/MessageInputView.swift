@@ -66,6 +66,7 @@ struct MessageInputView: View {
                         )
                 }
             }
+            .accessibilityLabel("Send message")
             .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending)
         }
         .padding(.horizontal)

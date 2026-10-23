@@ -1,0 +1,16 @@
+name: Wutzup Archlife backend contracts
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  native-contracts:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check-firebase-auth-only.py
+      - run: bash scripts/test-archlife-backend.sh
+      - run: bash scripts/test-offline-queue.sh
+      - run: bash build.sh

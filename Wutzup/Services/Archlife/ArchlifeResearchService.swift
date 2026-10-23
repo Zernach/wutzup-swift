@@ -1,25 +1,17 @@
 //
-//  FirebaseResearchService.swift
+//  ArchlifeResearchService.swift
 //  Wutzup
 //
-//  Firebase Cloud Function implementation for web research
+//  Archlife TypeScript API implementation for web research
 //
 
 import Foundation
 
-class FirebaseResearchService: ResearchService {
+class ArchlifeResearchService: ResearchService {
     private let baseURL: String
     
-    init() {
-        // Get the Firebase Functions URL from environment or use default
-        // Production: https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net
-        // For local testing: http://127.0.0.1:5001/YOUR-PROJECT-ID/us-central1
-        #if DEBUG
-        // Use emulator in debug mode (if available)
-        self.baseURL = "https://us-central1-wutzup-swift.cloudfunctions.net"
-        #else
-        self.baseURL = "https://us-central1-wutzup-swift.cloudfunctions.net"
-        #endif
+    init(baseURL: String = ArchlifeWutzupAPI.baseURL) {
+        self.baseURL = baseURL
     }
     
     func conductResearch(prompt: String) async throws -> String {
@@ -46,7 +38,7 @@ class FirebaseResearchService: ResearchService {
         
         
         // Send request
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ArchlifeWutzupAPI.send(request)
         
         // Check response
         guard let httpResponse = response as? HTTPURLResponse else {

@@ -50,7 +50,7 @@ struct AccountView: View {
     @State private var showingDeleteError = false
     @State private var deleteErrorMessage = ""
     @State private var isDeleting = false
-    @State private var fcmToken: String?
+    @State private var deviceToken: String?
     @State private var isLoadingToken = true
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var isRequestingPermission = false
@@ -70,6 +70,7 @@ struct AccountView: View {
     var presenceService: PresenceService? = nil
     
     var body: some View {
+        let displayedUser = appState.currentUser
         ZStack {
             AppConstants.Colors.background
                 .ignoresSafeArea()
@@ -84,7 +85,7 @@ struct AccountView: View {
                         // Profile Avatar with online status - tap to change
                         PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                             UserProfileImageView(
-                                user: appState.currentUser,
+                                user: displayedUser,
                                 size: 100,
                                 showOnlineStatus: true,
                                 presenceService: presenceService
@@ -311,7 +312,7 @@ struct AccountView: View {
                             .padding(.vertical, 12)
                             .background(AppConstants.Colors.surface)
                             
-                            // FCM Token Section
+                            // APNs Token Section
                             if isLoadingToken {
                                 HStack {
                                     ProgressView()
@@ -324,14 +325,14 @@ struct AccountView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 12)
                                 .background(AppConstants.Colors.surface)
-                            } else if let token = fcmToken {
+                            } else if let token = deviceToken {
                                 // Token exists - show it
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         Image(systemName: "key.fill")
                                             .foregroundColor(.green)
                                         
-                                        Text("FCM Token")
+                                        Text("APNs Token")
                                             .font(.body)
                                             .foregroundColor(AppConstants.Colors.textPrimary)
                                         
@@ -487,7 +488,7 @@ struct AccountView: View {
         .navigationTitle("Account")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await loadFCMToken()
+            await loadDeviceToken()
             await checkNotificationStatus()
             loadPersonality()
             initializeLanguages()
@@ -574,26 +575,11 @@ struct AccountView: View {
     
     // MARK: - Functions
     
-    private func loadFCMToken() async {
-        guard let userId = appState.currentUser?.id else {
-            isLoadingToken = false
-            return
-        }
-        
-        do {
-            // Fetch fresh user data from Firestore
-            let user = try await appState.userService.fetchUser(userId: userId)
-            await MainActor.run {
-                self.fcmToken = user.fcmToken
-                self.isLoadingToken = false
-            }
-        } catch {
-            await MainActor.run {
-                self.isLoadingToken = false
-            }
-        }
+    private func loadDeviceToken() async {
+        deviceToken = appState.notificationService.deviceToken
+        isLoadingToken = false
     }
-    
+
     private func checkNotificationStatus() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         await MainActor.run {
@@ -610,7 +596,7 @@ struct AccountView: View {
             
             // Wait a moment for the token to be registered
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            await loadFCMToken()
+            await loadDeviceToken()
             
             isRequestingPermission = false
         }
@@ -620,14 +606,14 @@ struct AccountView: View {
         isRequestingPermission = true
         
         Task { @MainActor in
-            // Request APNS registration which will trigger FCM token generation
+            // Request APNS registration which will trigger APNs token generation
             #if os(iOS)
             UIApplication.shared.registerForRemoteNotifications()
             #endif
             
             // Wait a moment for the token to be registered
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            await loadFCMToken()
+            await loadDeviceToken()
             
             isRequestingPermission = false
         }
@@ -788,8 +774,9 @@ struct AccountView: View {
                 )
             }
             
-            // Upload to Firebase Storage
-            guard let userService = appState.userService as? FirebaseUserService else {
+            // Upload to Archlife media storage
+            let userService = appState.userService
+            guard appState.currentUser?.id == userId else {
                 throw NSError(
                     domain: "AccountView",
                     code: 500,
@@ -799,7 +786,7 @@ struct AccountView: View {
             
             let imageUrl = try await userService.uploadProfileImage(userId: userId, image: uiImage)
             
-            // Update Firestore with new image URL
+            // Update the Archlife profile with new image URL
             try await appState.userService.updateProfileImageUrl(userId: userId, imageUrl: imageUrl)
             
             // Update current user in app state

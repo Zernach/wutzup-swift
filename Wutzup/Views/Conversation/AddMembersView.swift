@@ -246,24 +246,8 @@ struct AddMembersView: View {
         errorMessage = nil
         
         do {
-            // Create updated conversation with new members
-            var updatedConversation = conversation
-            var newParticipantIds = Set(conversation.participantIds)
-            var newParticipantNames = conversation.participantNames
-            
-            // Add new members
-            for user in selectedUsers {
-                newParticipantIds.insert(user.id)
-                newParticipantNames[user.id] = user.displayName
-            }
-            
-            updatedConversation.participantIds = Array(newParticipantIds).sorted()
-            updatedConversation.participantNames = newParticipantNames
-            updatedConversation.updatedAt = Date()
-            
-            // Update the conversation in the database
-            try await chatService.updateConversation(updatedConversation)
-            
+            try await chatService.addMembers(conversationId: conversation.id, userIds: selectedUsers.map(\.id))
+
             // Call the callback to refresh the members list
             onMembersAdded(selectedUsers)
             

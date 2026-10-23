@@ -65,18 +65,18 @@ class ConversationViewModel: ObservableObject {
     private var isPaused = false
     private var lastSyncTimestamp: Date?
     
-    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, modelContainer: ModelContainer, aiService: AIService = FirebaseAIService(), gifService: GIFService = FirebaseGIFService(), researchService: ResearchService = FirebaseResearchService(), tutorChatService: TutorChatService? = nil, userService: UserService? = nil, draftManager: DraftManager = .shared) {
+    init(conversation: Conversation, messageService: MessageService, presenceService: PresenceService, authService: AuthenticationService, modelContainer: ModelContainer, aiService: AIService? = nil, gifService: GIFService? = nil, researchService: ResearchService? = nil, tutorChatService: TutorChatService? = nil, userService: UserService? = nil, draftManager: DraftManager? = nil) {
         self.conversation = conversation
         self.messageService = messageService
         self._presenceService = presenceService
         self.authService = authService
         self.modelContainer = modelContainer
-        self.aiService = aiService
-        self.gifService = gifService
-        self.researchService = researchService
+        self.aiService = aiService ?? ArchlifeAIService()
+        self.gifService = gifService ?? ArchlifeGIFService()
+        self.researchService = researchService ?? ArchlifeResearchService()
         self.tutorChatService = tutorChatService
         self.userService = userService
-        self.draftManager = draftManager
+        self.draftManager = draftManager ?? DraftManager(userID: authService.currentUser?.id)
         
         // Setup network reconnection observer
         setupNetworkObserver()
@@ -156,11 +156,11 @@ class ConversationViewModel: ObservableObject {
                     }
                 } else {
                     // Try to fetch from Firebase as fallback
-                    await fetchUserFromFirebase(participantId: participantId, foundTutors: &foundTutors, context: context)
+                    await fetchUserFromAPI(participantId: participantId, foundTutors: &foundTutors, context: context)
                 }
             } catch {
                 // Try to fetch from Firebase as fallback
-                await fetchUserFromFirebase(participantId: participantId, foundTutors: &foundTutors, context: context)
+                await fetchUserFromAPI(participantId: participantId, foundTutors: &foundTutors, context: context)
             }
         }
         
@@ -211,7 +211,7 @@ class ConversationViewModel: ObservableObject {
     }
     
     /// Fetch user from Firebase as fallback and cache to local storage
-    private func fetchUserFromFirebase(participantId: String, foundTutors: inout [User], context: ModelContext) async {
+    private func fetchUserFromAPI(participantId: String, foundTutors: inout [User], context: ModelContext) async {
         guard let userService = userService else {
             return
         }
@@ -276,7 +276,7 @@ class ConversationViewModel: ObservableObject {
             
             
             // Note: The message is already created by the Cloud Function,
-            // so we don't need to create it here. The Firestore listener
+            // so we don't need to create it here. The Archlife subscription
             // will pick it up automatically.
             
         } catch {
@@ -631,7 +631,7 @@ class ConversationViewModel: ObservableObject {
             if let index = messages.firstIndex(where: { $0.id == optimisticMessage.id }) {
                 messages[index] = serverMessage
             }
-            // Note: The Firestore listener will also pick up this message and may add it again,
+            // Note: The Archlife subscription will also pick up this message and may add it again,
             // but the duplicate check in startObserving() will handle that
             
             // If there are tutors in the conversation, generate their responses

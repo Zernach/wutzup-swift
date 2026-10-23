@@ -3,7 +3,7 @@
 //  Wutzup
 //
 //  Manages app lifecycle transitions for optimal battery usage and data sync
-//  - Pauses/resumes Firestore listeners on background/foreground
+//  - Pauses/resumes Archlife subscriptions on background/foreground
 //  - Updates presence status
 //  - Syncs missed messages
 //  - Handles background tasks
@@ -131,7 +131,7 @@ class AppLifecycleManager: ObservableObject {
             self?.endBackgroundTask()
         }
         
-        // Pause Firestore listeners to save battery
+        // Pause Archlife subscriptions to save battery
         await pauseListeners()
         
         // Notify callback

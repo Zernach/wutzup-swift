@@ -20,8 +20,6 @@ struct WutzupApp: App {
         // Configure Firebase
         FirebaseApp.configure()
         
-        // Configure Firestore offline persistence
-        FirebaseConfig.configureFirestore()
         
         // Configure Firebase emulators in debug mode
         #if DEBUG

@@ -19,7 +19,7 @@ struct AIMenuView: View {
             if isExpanded {
                 // Menu Items
                 VStack(spacing: 0) {
-                    // AI Reply (Firebase/Python)
+                    // AI Reply
                     menuItem(
                         icon: "sparkles",
                         iconColor: AppConstants.Colors.accent,

@@ -81,6 +81,7 @@ struct ChatListView: View {
                             presenceService: nil
                         )
                     }
+                    .accessibilityLabel("Account")
                 }
             }
             .navigationDestination(for: Conversation.self) { conversation in
@@ -176,6 +177,7 @@ struct ChatListView: View {
                         typingIndicatorText: viewModel.getTypingIndicatorText(for: conversation)
                     )
                 }
+                .accessibilityIdentifier("conversation.\(conversation.id)")
                 .buttonStyle(ConversationRowButtonStyle())
                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 .listRowBackground(Color.clear)

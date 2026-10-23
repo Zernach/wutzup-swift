@@ -21,13 +21,13 @@ class AppState: ObservableObject {
     
     // Services
     let authService: FirebaseAuthService
-    let messageService: FirebaseMessageService
-    let chatService: FirebaseChatService
-    let userService: FirebaseUserService
-    let presenceService: FirebasePresenceService
-    let notificationService: FirebaseNotificationService
-    let aiService: FirebaseAIService
-    let tutorChatService: FirebaseTutorChatService
+    let messageService: ArchlifeMessageService
+    let chatService: ArchlifeChatService
+    let userService: ArchlifeUserService
+    let presenceService: ArchlifePresenceService
+    let notificationService: ArchlifeNotificationService
+    let aiService: ArchlifeAIService
+    let tutorChatService: ArchlifeTutorChatService
     
     // Network and offline management
     let networkMonitor = NetworkMonitor.shared
@@ -46,20 +46,20 @@ class AppState: ObservableObject {
     private var hasRequestedNotificationPermission = false
     private var networkObserver: Any?
     
-    // 🔥 FIX: Store pending FCM token to handle race condition
-    private var pendingFCMToken: String?
+    // 🔥 FIX: Store pending APNs token to handle race condition
+    private var pendingDeviceToken: String? = UserDefaults.standard.string(forKey: "wutzup.apns.deviceToken")
     
     init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
         // Initialize services
         self.authService = FirebaseAuthService()
-        self.messageService = FirebaseMessageService()
-        self.chatService = FirebaseChatService()
-        self.userService = FirebaseUserService()
-        self.presenceService = FirebasePresenceService()
-        self.notificationService = FirebaseNotificationService()
-        self.aiService = FirebaseAIService()
-        self.tutorChatService = FirebaseTutorChatService()
+        self.messageService = ArchlifeMessageService()
+        self.chatService = ArchlifeChatService()
+        self.userService = ArchlifeUserService()
+        self.presenceService = ArchlifePresenceService()
+        self.notificationService = ArchlifeNotificationService()
+        self.aiService = ArchlifeAIService()
+        self.tutorChatService = ArchlifeTutorChatService()
         self.chatListViewModel = ChatListViewModel(
             chatService: chatService,
             authService: authService,
@@ -72,10 +72,10 @@ class AppState: ObservableObject {
             self?.handleNotificationTap(conversationId: conversationId)
         }
         
-        // 🔥 FIX: Handle FCM token updates through AppState to avoid race condition
-        notificationService.onFCMTokenReceived = { [weak self] token in
+        // 🔥 FIX: Handle APNs token updates through AppState to avoid race condition
+        notificationService.onDeviceTokenReceived = { [weak self] token in
             Task { @MainActor in
-                await self?.handleFCMToken(token)
+                await self?.handleDeviceToken(token)
             }
         }
         
@@ -209,6 +209,7 @@ class AppState: ObservableObject {
                 
                 self.currentUser = user
                 self.isAuthenticated = user != nil
+                self.offlineQueue.activate(userID: user?.id)
                 
                 if user == nil {
                     // User logged out - clear data and stop observing
@@ -226,6 +227,10 @@ class AppState: ObservableObject {
                     Task { @MainActor in
                         // Yield to next run loop before making state changes
                         await Task.yield()
+                        guard self.currentUser?.id == user.id else { return }
+
+                        await self.offlineQueue.syncPendingMessages(messageService: self.messageService)
+                        guard self.currentUser?.id == user.id else { return }
                         
                         try? await self.presenceService.setOnline(userId: user.id)
                         
@@ -235,10 +240,10 @@ class AppState: ObservableObject {
                         await self.chatListViewModel.fetchConversations()
                         self.chatListViewModel.startObserving()
                         
-                        // 🔥 FIX: Save any pending FCM token now that auth is ready
-                        if let pendingToken = self.pendingFCMToken {
-                            await self.saveFCMToken(pendingToken, for: user.id)
-                            self.pendingFCMToken = nil
+                        // 🔥 FIX: Save any pending APNs token now that auth is ready
+                        if let pendingToken = self.pendingDeviceToken {
+                            await self.saveDeviceToken(pendingToken, for: user.id)
+                            self.pendingDeviceToken = nil
                         }
                         
                         // Request notification permission after successful login
@@ -311,26 +316,26 @@ class AppState: ObservableObject {
         selectedConversationFromNotification = conversationId
     }
     
-    /// 🔥 FIX: Handle FCM token updates with proper auth coordination
-    private func handleFCMToken(_ token: String) async {
+    /// 🔥 FIX: Handle APNs token updates with proper auth coordination
+    private func handleDeviceToken(_ token: String) async {
         
         // Check if we have an authenticated user
         guard let userId = currentUser?.id else {
-            pendingFCMToken = token
+            pendingDeviceToken = token
             return
         }
         
         // User is authenticated, save immediately
-        await saveFCMToken(token, for: userId)
+        await saveDeviceToken(token, for: userId)
     }
     
-    /// Save FCM token to Firestore
-    private func saveFCMToken(_ token: String, for userId: String) async {
+    /// Save APNs token through the Archlife API
+    private func saveDeviceToken(_ token: String, for userId: String) async {
         do {
-            try await notificationService.updateFCMToken(userId: userId, token: token)
+            try await notificationService.updateDeviceToken(userId: userId, token: token)
         } catch {
             // Keep as pending to retry later
-            pendingFCMToken = token
+            pendingDeviceToken = token
         }
     }
     

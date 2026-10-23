@@ -1,0 +1,60 @@
+{
+  "userResponse": {
+    "user": {
+      "id": "legacy_student",
+      "email": "student@example.test",
+      "isTutor": false,
+      "createdAt": "2025-10-21T12:00:00.000Z",
+      "displayName": "Student"
+    }
+  },
+  "tutorResponse": {
+    "user": {
+      "id": "firebaseTutorUid",
+      "email": "",
+      "isTutor": true,
+      "createdAt": "2025-10-21T12:00:00.000Z",
+      "displayName": "María",
+      "personality": "A patient Spanish teacher"
+    }
+  },
+  "conversationResponse": {
+    "conversation": {
+      "id": "legacy_chat",
+      "isGroup": false,
+      "revision": 1,
+      "createdAt": "2025-10-21T12:00:00.000Z",
+      "updatedAt": "2025-10-21T12:00:00.000Z",
+      "unreadCount": 1,
+      "participantIds": [
+        "legacy_student",
+        "firebaseTutorUid"
+      ],
+      "participantNames": {
+        "legacy_student": "Student",
+        "firebaseTutorUid": "María"
+      }
+    }
+  },
+  "messagesResponse": {
+    "next": null,
+    "messages": [
+      {
+        "id": "legacy_message",
+        "readBy": [
+          "firebaseTutorUid"
+        ],
+        "status": "sent",
+        "content": "¡Hola!",
+        "senderId": "firebaseTutorUid",
+        "timestamp": "2025-10-21T12:00:01.123Z",
+        "senderName": "María",
+        "deliveredTo": [
+          "firebaseTutorUid"
+        ],
+        "conversationId": "legacy_chat",
+        "isFromCurrentUser": false
+      }
+    ]
+  }
+}

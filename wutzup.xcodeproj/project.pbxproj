@@ -8,14 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		9EF4CC622EA742A4002C88E2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC612EA742A4002C88E2 /* FirebaseAuth */; };
-		9EF4CC642EA742A4002C88E2 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC632EA742A4002C88E2 /* FirebaseCrashlytics */; };
-		9EF4CC662EA742A4002C88E2 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC652EA742A4002C88E2 /* FirebaseFirestore */; };
-		9EF4CC682EA742A4002C88E2 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC672EA742A4002C88E2 /* FirebaseFunctions */; };
-		9EF4CC6A2EA742A4002C88E2 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC692EA742A4002C88E2 /* FirebaseMessaging */; };
-		9EF4CC6C2EA742A4002C88E2 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC6B2EA742A4002C88E2 /* FirebaseStorage */; };
-		9EF4CC6E2EA7432E002C88E2 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC6D2EA7432E002C88E2 /* FirebaseAnalytics */; };
-		9EF4CC702EA7432E002C88E2 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC6F2EA7432E002C88E2 /* FirebaseAnalyticsCore */; };
-		9EF4CC722EA7432E002C88E2 /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = 9EF4CC712EA7432E002C88E2 /* FirebaseAnalyticsIdentitySupport */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,7 +30,7 @@
 			exceptions = (
 				9E47F7C22EA822F400DB6E3A /* Exceptions for "wutzup" folder in "wutzup" target */,
 			);
-			path = wutzup;
+			path = Wutzup;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -48,15 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9EF4CC6E2EA7432E002C88E2 /* FirebaseAnalytics in Frameworks */,
 				9EF4CC622EA742A4002C88E2 /* FirebaseAuth in Frameworks */,
-				9EF4CC722EA7432E002C88E2 /* FirebaseAnalyticsIdentitySupport in Frameworks */,
-				9EF4CC642EA742A4002C88E2 /* FirebaseCrashlytics in Frameworks */,
-				9EF4CC6A2EA742A4002C88E2 /* FirebaseMessaging in Frameworks */,
-				9EF4CC662EA742A4002C88E2 /* FirebaseFirestore in Frameworks */,
-				9EF4CC682EA742A4002C88E2 /* FirebaseFunctions in Frameworks */,
-				9EF4CC6C2EA742A4002C88E2 /* FirebaseStorage in Frameworks */,
-				9EF4CC702EA7432E002C88E2 /* FirebaseAnalyticsCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,14 +84,6 @@
 			name = wutzup;
 			packageProductDependencies = (
 				9EF4CC612EA742A4002C88E2 /* FirebaseAuth */,
-				9EF4CC632EA742A4002C88E2 /* FirebaseCrashlytics */,
-				9EF4CC652EA742A4002C88E2 /* FirebaseFirestore */,
-				9EF4CC672EA742A4002C88E2 /* FirebaseFunctions */,
-				9EF4CC692EA742A4002C88E2 /* FirebaseMessaging */,
-				9EF4CC6B2EA742A4002C88E2 /* FirebaseStorage */,
-				9EF4CC6D2EA7432E002C88E2 /* FirebaseAnalytics */,
-				9EF4CC6F2EA7432E002C88E2 /* FirebaseAnalyticsCore */,
-				9EF4CC712EA7432E002C88E2 /* FirebaseAnalyticsIdentitySupport */,
 			);
 			productName = wutzup;
 			productReference = 9E881B7B2EA73FC2005D2156 /* wutzup.app */;
@@ -292,7 +268,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = wutzup/wutzup.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Wutzup/wutzup.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5JRT57XQ6N;
@@ -301,7 +277,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = wutzup/Info.plist;
+				INFOPLIST_FILE = Wutzup/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -340,7 +316,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = wutzup/wutzup.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Wutzup/wutzup.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5JRT57XQ6N;
@@ -349,7 +325,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = wutzup/Info.plist;
+				INFOPLIST_FILE = Wutzup/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -422,46 +398,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
-		};
-		9EF4CC632EA742A4002C88E2 /* FirebaseCrashlytics */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseCrashlytics;
-		};
-		9EF4CC652EA742A4002C88E2 /* FirebaseFirestore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFirestore;
-		};
-		9EF4CC672EA742A4002C88E2 /* FirebaseFunctions */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFunctions;
-		};
-		9EF4CC692EA742A4002C88E2 /* FirebaseMessaging */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseMessaging;
-		};
-		9EF4CC6B2EA742A4002C88E2 /* FirebaseStorage */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseStorage;
-		};
-		9EF4CC6D2EA7432E002C88E2 /* FirebaseAnalytics */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalytics;
-		};
-		9EF4CC6F2EA7432E002C88E2 /* FirebaseAnalyticsCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalyticsCore;
-		};
-		9EF4CC712EA7432E002C88E2 /* FirebaseAnalyticsIdentitySupport */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 9EF4CC602EA742A4002C88E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalyticsIdentitySupport;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

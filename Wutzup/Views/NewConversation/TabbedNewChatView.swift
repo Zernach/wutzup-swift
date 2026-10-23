@@ -239,6 +239,7 @@ struct UserListView: View {
                             }
                             .padding(.vertical, 4)
                         }
+                        .accessibilityIdentifier("recipient.\(user.id)")
                         .buttonStyle(.plain)
                         .contentShape(Rectangle())
                         .disabled(isCreatingConversation)

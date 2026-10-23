@@ -273,7 +273,7 @@ struct MessageActionsToolbar: View {
         isTranslating = true
         Task { @MainActor in
             do {
-                let service = FirebaseAIService()
+                let service = ArchlifeAIService()
                 let result = try await service.translateText(text: messageText, targetLanguage: language.rawValue)
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     isTranslating = false
@@ -298,7 +298,7 @@ struct MessageActionsToolbar: View {
         
         Task { @MainActor in
             do {
-                let service = FirebaseAIService()
+                let service = ArchlifeAIService()
                 let history = conversationHistory ?? []
                 let analysis = try await service.getMessageContext(selectedMessage: messageText, conversationHistory: history)
                 
@@ -623,4 +623,3 @@ struct MessageActionsToolbarFallback: View {
         }
     }
 }
-

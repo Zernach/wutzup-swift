@@ -6,9 +6,8 @@
 //
 
 import Foundation
-import FirebaseFirestore
 
-struct Conversation: Identifiable, Codable, Hashable, Sendable {
+nonisolated struct Conversation: Identifiable, Codable, Hashable, Sendable {
     let id: String
     var participantIds: [String]
     var participantNames: [String: String] // userId -> displayName
@@ -19,6 +18,7 @@ struct Conversation: Identifiable, Codable, Hashable, Sendable {
     var lastMessageTimestamp: Date?
     var createdAt: Date
     var updatedAt: Date
+    var revision: Int = 1
     var unreadCount: Int = 0
     
     init(id: String = UUID().uuidString,
@@ -31,8 +31,9 @@ struct Conversation: Identifiable, Codable, Hashable, Sendable {
          lastMessageTimestamp: Date? = nil,
          createdAt: Date = Date(),
          updatedAt: Date = Date(),
-         unreadCount: Int = 0) {
+         unreadCount: Int = 0, revision: Int = 1) {
         self.id = id
+        self.revision = revision
         self.participantIds = participantIds
         self.participantNames = participantNames
         self.isGroup = isGroup
@@ -43,60 +44,6 @@ struct Conversation: Identifiable, Codable, Hashable, Sendable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.unreadCount = unreadCount
-    }
-    
-    // Initialize from Firestore document
-    init?(from document: DocumentSnapshot) {
-        guard let data = document.data(),
-              let participantIds = data["participantIds"] as? [String],
-              let isGroup = data["isGroup"] as? Bool,
-              let createdAtTimestamp = data["createdAt"] as? Timestamp,
-              let updatedAtTimestamp = data["updatedAt"] as? Timestamp else {
-            return nil
-        }
-        
-        self.id = document.documentID
-        self.participantIds = participantIds
-        self.participantNames = data["participantNames"] as? [String: String] ?? [:]
-        self.isGroup = isGroup
-        self.groupName = data["groupName"] as? String
-        self.groupImageUrl = data["groupImageUrl"] as? String
-        self.lastMessage = data["lastMessage"] as? String
-        
-        if let lastMessageTimestamp = data["lastMessageTimestamp"] as? Timestamp {
-            self.lastMessageTimestamp = lastMessageTimestamp.dateValue()
-        }
-        
-        self.createdAt = createdAtTimestamp.dateValue()
-        self.updatedAt = updatedAtTimestamp.dateValue()
-        self.unreadCount = data["unreadCount"] as? Int ?? 0
-    }
-    
-    // Convert to Firestore data
-    var firestoreData: [String: Any] {
-        var data: [String: Any] = [
-            "participantIds": participantIds,
-            "participantNames": participantNames,
-            "isGroup": isGroup,
-            "createdAt": Timestamp(date: createdAt),
-            "updatedAt": Timestamp(date: updatedAt),
-            "unreadCount": unreadCount
-        ]
-        
-        if let groupName = groupName {
-            data["groupName"] = groupName
-        }
-        if let groupImageUrl = groupImageUrl {
-            data["groupImageUrl"] = groupImageUrl
-        }
-        if let lastMessage = lastMessage {
-            data["lastMessage"] = lastMessage
-        }
-        if let lastMessageTimestamp = lastMessageTimestamp {
-            data["lastMessageTimestamp"] = Timestamp(date: lastMessageTimestamp)
-        }
-        
-        return data
     }
     
     // Helper to get display name for conversation

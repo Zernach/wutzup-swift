@@ -1,18 +1,17 @@
 //
-//  FirebaseGIFService.swift
+//  ArchlifeGIFService.swift
 //  Wutzup
 //
-//  Firebase implementation for GIF generation service
+//  Archlife implementation for GIF generation service
 //
 
 import Foundation
 
-final class FirebaseGIFService: GIFService {
+final class ArchlifeGIFService: GIFService {
     private let cloudFunctionURL: String
     
-    init(projectId: String = "wutzup-swift") {
-        // Cloud Functions URL (update with your actual region if different)
-        self.cloudFunctionURL = "https://us-central1-\(projectId).cloudfunctions.net/generate_gif"
+    init(baseURL: String = ArchlifeWutzupAPI.baseURL) {
+        self.cloudFunctionURL = "\(baseURL)/generate_gif"
     }
     
     func generateGIF(prompt: String) async throws -> String {
@@ -36,7 +35,7 @@ final class FirebaseGIFService: GIFService {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         // Make request
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ArchlifeWutzupAPI.send(request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw GIFServiceError.networkError

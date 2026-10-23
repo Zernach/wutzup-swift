@@ -1,85 +1,33 @@
-//
-//  DraftManager.swift
-//  Wutzup
-//
-//  Created on October 21, 2025
-//
-
 import Foundation
 
-/// Manages persistent storage of draft messages for conversations
+/// An instance is bound to the account that opened its view. Late view teardown
+/// cannot save a previous account's text into the next account's preferences.
 final class DraftManager {
-    static let shared = DraftManager()
-    
-    private let userDefaults = UserDefaults.standard
-    private let draftsKey = "wutzup_message_drafts"
-    
-    private init() {}
-    
-    /// Save a draft message for a conversation
-    /// - Parameters:
-    ///   - text: The draft message text
-    ///   - conversationId: The ID of the conversation
+    private let userDefaults: UserDefaults
+    private let draftsKey: String?
+
+    init(userID: String?, defaults: UserDefaults = .standard) {
+        userDefaults = defaults
+        draftsKey = userID.map { "wutzup.messageDrafts.v2." + $0 }
+    }
+
     func saveDraft(_ text: String, for conversationId: String) {
+        guard let draftsKey else { return }
         var drafts = loadAllDrafts()
-        
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            // If text is empty, remove the draft
             drafts.removeValue(forKey: conversationId)
-        } else {
-            // Save non-empty draft
-            drafts[conversationId] = text
-        }
-        
+        } else { drafts[conversationId] = text }
         userDefaults.set(drafts, forKey: draftsKey)
-        
-        #if DEBUG
-        #endif
     }
-    
-    /// Load a draft message for a conversation
-    /// - Parameter conversationId: The ID of the conversation
-    /// - Returns: The draft text, or nil if no draft exists
-    func loadDraft(for conversationId: String) -> String? {
-        let drafts = loadAllDrafts()
-        let draft = drafts[conversationId]
-        
-        #if DEBUG
-        if let draft = draft {
-        }
-        #endif
-        
-        return draft
-    }
-    
-    /// Remove a draft message for a conversation
-    /// - Parameter conversationId: The ID of the conversation
-    func removeDraft(for conversationId: String) {
-        var drafts = loadAllDrafts()
-        drafts.removeValue(forKey: conversationId)
-        userDefaults.set(drafts, forKey: draftsKey)
-        
-        #if DEBUG
-        #endif
-    }
-    
-    /// Remove all draft messages (useful for cleanup)
+
+    func loadDraft(for conversationId: String) -> String? { loadAllDrafts()[conversationId] }
+    func removeDraft(for conversationId: String) { saveDraft("", for: conversationId) }
     func removeAllDrafts() {
-        userDefaults.removeObject(forKey: draftsKey)
-        
-        #if DEBUG
-        #endif
+        if let draftsKey { userDefaults.removeObject(forKey: draftsKey) }
     }
-    
-    /// Get all conversation IDs that have drafts
-    func conversationIdsWithDrafts() -> [String] {
-        Array(loadAllDrafts().keys)
-    }
-    
-    // MARK: - Private Helpers
-    
+    func conversationIdsWithDrafts() -> [String] { Array(loadAllDrafts().keys) }
     private func loadAllDrafts() -> [String: String] {
-        userDefaults.dictionary(forKey: draftsKey) as? [String: String] ?? [:]
+        guard let draftsKey else { return [:] }
+        return userDefaults.dictionary(forKey: draftsKey) as? [String: String] ?? [:]
     }
 }
-

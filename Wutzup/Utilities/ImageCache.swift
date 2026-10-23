@@ -96,11 +96,14 @@ actor ImageCache {
     func loadImage(from url: URL) async throws -> Data {
         // Check cache first
         if let cachedData = await getData(for: url) {
-            return cachedData
+            if WutzupMediaResponse.isImage(cachedData) { return cachedData }
+            removeData(for: url)
         }
+        guard WutzupMediaResponse.mayDownload(url) else { throw URLError(.unsupportedURL) }
         
         // Download if not cached
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(from: url)
+        try WutzupMediaResponse.validate(data, response: response)
         
         // Cache the downloaded data
         await setData(data, for: url)
@@ -236,7 +239,7 @@ actor ImageCache {
 // MARK: - Supporting Types
 
 /// Wrapper for cached image data
-private class CachedImage {
+nonisolated private final class CachedImage {
     let data: Data
     let timestamp: Date
     
@@ -251,7 +254,7 @@ private class CachedImage {
 extension String {
     /// Generates a SHA256 hash of the string for cache key generation
     /// Uses CryptoKit to ensure stable, collision-resistant hashing
-    var sha256Hash: String {
+    nonisolated var sha256Hash: String {
         let data = Data(self.utf8)
         let hashed = SHA256.hash(data: data)
         return hashed.compactMap { String(format: "%02x", $0) }.joined()

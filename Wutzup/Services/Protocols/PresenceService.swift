@@ -7,13 +7,13 @@
 
 import Foundation
 
-enum PresenceStatus: String, Codable {
+nonisolated enum PresenceStatus: String, Codable, Sendable {
     case online
     case offline
     case away
 }
 
-struct Presence: Codable {
+nonisolated struct Presence: Codable, Equatable, Sendable {
     let userId: String
     var status: PresenceStatus
     var lastSeen: Date

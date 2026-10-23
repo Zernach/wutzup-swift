@@ -30,6 +30,7 @@ struct GlassFloatingActionButton: View {
             .frame(width: 56, height: 56)
             .shadow(color: AppConstants.Colors.accent.opacity(0.3), radius: 10, x: 0, y: 4)
         }
+        .accessibilityLabel("New conversation options")
         .buttonStyle(.plain)
     }
 }

@@ -74,7 +74,7 @@ class UserPickerViewModel: ObservableObject {
                     existingUser.email = user.email
                     existingUser.displayName = user.displayName
                     existingUser.profileImageUrl = user.profileImageUrl
-                    existingUser.fcmToken = user.fcmToken
+                    existingUser.fcmToken = nil // Retire the obsolete cached Firebase messaging token.
                     existingUser.isTutor = user.isTutor
                     existingUser.lastSeen = user.lastSeen
                     existingUser.personality = user.personality

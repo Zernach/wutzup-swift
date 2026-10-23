@@ -1,0 +1,18 @@
+{
+  "slug": "wutzup-swift",
+  "namespace": "wutzup",
+  "title": "Wutzup",
+  "frontendPath": "/Users/zernach/code/archlife-apps-frontends/wutzup-swift",
+  "publicOrigin": "https://wutzup.archlife.org",
+  "localOrigin": "https://wutzup.archlife",
+  "apiOrigin": "https://api.archlife.org/api/wutzup",
+  "localApiOrigin": "https://api-dev.archlife/api/wutzup",
+  "identity": {
+    "provider": "firebase",
+    "projectId": "wutzup-swift",
+    "audience": "wutzup-swift",
+    "token": "Firebase ID token"
+  },
+  "persistence": "Private Archlife PostgreSQL wutzupdb namespace through Hasura and the TypeScript API; Archlife S3 media; direct APNs notifications",
+  "scope": "Keep the Swift app and existing Firebase Auth project only. Migrate all profiles, conversations, messages, receipts, presence, media and AI logic to the Archlife ecosystem. Reuse Wutzup OpenAI key in TypeScript project-key selection. Prepare and verify migrations and historical import without deployment or live data mutation."
+}

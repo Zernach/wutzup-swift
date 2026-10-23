@@ -10,7 +10,7 @@
 ![Firebase](https://img.shields.io/badge/Firebase-10.0+-yellow.svg)
 ![License](https://img.shields.io/badge/License-Private-red.svg)
 
-**A production-ready, real-time messaging application built with SwiftUI and Firebase**
+**A native messaging app built with SwiftUI, the Archlife API and Firebase Auth**
 
 [📱 Features](#-features) • [🚀 Quick Start](#-quick-start) • [🏗️ Architecture](#️-architecture) • [📚 Documentation](#-documentation) • [🧪 Testing](#-testing)
 
@@ -20,17 +20,17 @@
 
 ## 🌟 Overview
 
-WutzUp is a modern, reliable messaging app designed for iOS that delivers instant communication with zero message loss. Built with SwiftUI and powered by Firebase, it provides a seamless messaging experience that works flawlessly across all network conditions.
+WutzUp is an iOS messaging app for international travelers and language learners. The SwiftUI client uses the Archlife TypeScript API and private PostgreSQL database, with Firebase Auth for identity and SwiftData for local caching. See [the current backend migration](docs/backend-migration.md) and [verification evidence](docs/backend-verification.md) for the implementation and remaining release checks.
 
 ### ✨ Key Highlights
 
-- **⚡ Real-time messaging** with sub-second delivery
-- **🔄 Offline-first architecture** - never lose a message
+- **⚡ Message synchronization** through bounded API polling
+- **🔄 Offline message queue** with stable retry IDs
 - **👥 Group chat support** for 3+ participants  
 - **📱 Native iOS experience** with SwiftUI
 - **🔒 Secure authentication** via Firebase Auth
 - **📲 Push notifications** for instant alerts
-- **🎯 Production-ready** with comprehensive testing
+- **🎯 Executable verification** for API, database and native contracts
 
 ---
 
@@ -48,14 +48,14 @@ WutzUp is a modern, reliable messaging app designed for iOS that delivers instan
 - **Live presence** - see who's online/offline
 - **Typing indicators** - know when others are composing
 - **Read receipts** - track message delivery status
-- **Instant synchronization** across all devices
+- **Bounded synchronization** with backoff and account-switch cancellation
 - **Background message handling** - receive messages when app is closed
 
 ### Network Resilience
 - **Offline message queue** - messages wait for connection
 - **Automatic sync** when connectivity returns
 - **Poor network handling** - works on 3G, WiFi, and spotty connections
-- **Zero message loss** under any condition
+- **Idempotent sends** that retain the original result on retries
 - **Graceful degradation** during network issues
 
 ### User Experience
@@ -78,45 +78,24 @@ WutzUp is a modern, reliable messaging app designed for iOS that delivers instan
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/wutzup-swift.git
-   cd wutzup-swift
-   ```
+Use the existing checkout and Xcode project:
 
-2. **Setup Firebase** (5 minutes)
-   ```bash
-   # Install Firebase CLI
-   npm install -g firebase-tools
-   
-   # Login and initialize
-   firebase login
-   firebase init
-   # Select: Firestore, Functions, Storage, Emulators
-   ```
+```sh
+open wutzup.xcodeproj
+python3 scripts/check-firebase-auth-only.py
+bash scripts/test-archlife-backend.sh
+bash build.sh
+```
 
-3. **Create Xcode Project** (10 minutes)
-   ```bash
-   # Follow the detailed setup guide
-   open XCODE_SETUP.md
-   ```
+The project already includes Firebase Core/Auth and its existing
+`Wutzup/Resources/GoogleService-Info.plist`. Keep that identity project. No
+Firebase database, Storage, Messaging or Cloud Functions SDK is needed.
 
-4. **Add Firebase SDK**
-   - Open Xcode project
-   - File → Add Package Dependencies
-   - Add: `https://github.com/firebase/firebase-ios-sdk`
-   - Select: FirebaseAuth, FirebaseFirestore, FirebaseStorage, FirebaseMessaging
-
-5. **Configure Firebase**
-   - Download `GoogleService-Info.plist` from Firebase Console
-   - Add to Xcode project
-   - Follow configuration in `firebase/` directory
-
-6. **Run the app**
-   ```bash
-   # Build and run on simulator
-   ⌘ + R
-   ```
+Debug uses `https://api-dev.archlife/api/wutzup`; Release uses
+`https://api.archlife.org/api/wutzup`. Select `WUTZUP_API_BASE_URL` for the intended
+API environment. Backend namespace initialization and historical import must be
+completed in that environment before testing real chat persistence. See
+[backend migration](docs/backend-migration.md); local builds do not deploy it.
 
 ### First Run
 
@@ -135,17 +114,19 @@ WutzUp is a modern, reliable messaging app designed for iOS that delivers instan
 |-----------|------------|---------|
 | **Frontend** | SwiftUI + Swift 5.9+ | Native iOS UI |
 | **Local Storage** | SwiftData | Offline persistence |
-| **Backend** | Firebase | Real-time database & auth |
-| **Notifications** | FCM + APNs | Push notifications |
+| **Backend** | Archlife TypeScript API + private PostgreSQL | Application data and AI operations |
+| **Identity** | Firebase Auth | Existing accounts and ID tokens |
+| **Media** | Archlife private S3 | Profiles and GIFs |
+| **Notifications** | SQL outbox + direct APNs | Push notifications |
 | **Architecture** | MVVM | Clean separation of concerns |
 
 ### Project Structure
 
 ```
-wutzup/
+Wutzup/
 ├── App/                    # Application entry & state
 ├── Models/                 # Domain & SwiftData models
-├── Services/              # Firebase service implementations
+├── Services/              # Archlife API services and Firebase Auth
 ├── ViewModels/            # MVVM business logic
 ├── Views/                 # SwiftUI user interface
 ├── Utilities/            # Helpers & extensions
@@ -168,6 +149,8 @@ wutzup/
 
 | Document | Description |
 |----------|-------------|
+| **[Backend migration](docs/backend-migration.md)** | Current Archlife data/API ownership |
+| **[Backend verification](docs/backend-verification.md)** | Automated evidence and release gates |
 | **[Product Requirements](@docs/product-requirements-document.md)** | Complete feature specifications |
 | **[Architecture Guide](@docs/architecture.md)** | Technical implementation details |
 | **[Setup Instructions](XCODE_SETUP.md)** | Step-by-step Xcode setup |
@@ -244,16 +227,16 @@ firebase emulators:start
 ### ✅ Completed Features
 
 - [x] **Authentication System** - Login/register with Firebase
-- [x] **Real-Time Messaging** - Send/receive with Firestore
+- [x] **Messaging** - Archlife API persistence and polling (local verification)
 - [x] **Offline Support** - Message queue and sync
 - [x] **Presence & Typing** - Online status and indicators
-- [x] **Push Notifications** - FCM integration
+- [x] **Push Notifications** - Direct APNs adapter and durable outbox (device delivery pending)
 - [x] **Group Chat** - Multi-participant conversations
 - [x] **Message Persistence** - Local SwiftData cache
 
 ### 🚧 In Progress
 
-- [ ] **Image Sharing** - Upload/download via Firebase Storage
+- [ ] **Image Sharing** - Archlife private media; live delivery verification pending
 - [ ] **User Search** - Find and add contacts
 - [ ] **Profile Management** - Edit name and photo
 - [ ] **Message Search** - Search conversation history
@@ -269,31 +252,20 @@ firebase emulators:start
 
 ---
 
-## 💰 Cost Analysis
+## Runtime costs
 
-### Firebase Pricing (Free Tier)
-- **Firestore**: 50K reads, 20K writes/day
-- **Auth**: Unlimited users
-- **Storage**: 5GB storage, 1GB/day bandwidth
-- **Functions**: 125K invocations/month
-- **FCM**: Unlimited notifications
-
-**Supports**: ~100 daily active users
-
-### Scaling Costs
-- **1,000 users**: ~$25-50/month
-- **10,000 users**: ~$100-200/month
-- **Apple Developer**: $99/year
+Application data, media and AI usage are owned by Archlife. The old Firebase
+Firestore/Functions/Storage estimates do not describe this implementation. The
+backend verification notes record the bounded synthetic AI evaluation cost;
+production capacity and usage costs still require measurement.
 
 ---
 
 ## 🎓 Learning Resources
 
-### Firebase Documentation
+### Identity documentation
 - [Firebase iOS Setup](https://firebase.google.com/docs/ios/setup)
-- [Firestore Guide](https://firebase.google.com/docs/firestore)
-- [Cloud Functions](https://firebase.google.com/docs/functions)
-- [FCM Integration](https://firebase.google.com/docs/cloud-messaging)
+- [Firebase Authentication](https://firebase.google.com/docs/auth)
 
 ### Swift & SwiftUI
 - [SwiftUI Documentation](https://developer.apple.com/documentation/swiftui)
@@ -333,7 +305,7 @@ This project is private and intended for portfolio/educational purposes. All rig
 
 ## 🙏 Acknowledgments
 
-- **Firebase Team** - For comprehensive backend services
+- **Firebase Team** - For authentication
 - **Apple** - For SwiftUI and SwiftData frameworks  
 - **SwiftUI Community** - For patterns and best practices
 - **Open Source Contributors** - For inspiration and tools
@@ -342,7 +314,7 @@ This project is private and intended for portfolio/educational purposes. All rig
 
 <div align="center">
 
-**Built with ❤️ using SwiftUI and Firebase**
+**Built with ❤️ using SwiftUI, Archlife and Firebase Auth**
 
 [⬆ Back to Top](#-wutzup---real-time-ios-messaging-app)
 
