@@ -86,6 +86,7 @@ struct NotificationPermissionView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
+                    .accessibilityIdentifier("notifications.later")
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 8)

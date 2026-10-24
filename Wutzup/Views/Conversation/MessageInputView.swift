@@ -26,6 +26,7 @@ struct MessageInputView: View {
         HStack(spacing: 12) {
             // Text Input
             TextField("Message", text: $text, axis: .vertical)
+                .accessibilityIdentifier("message.composer")
                 .textFieldStyle(.plain)
                 .padding(12)
                 .background(AppConstants.Colors.surfaceSecondary)

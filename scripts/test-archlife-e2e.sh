@@ -7,5 +7,6 @@ test -f "$cloud_root/scripts/run-wutzup-e2e.mjs" || { echo 'Set WUTZUP_CLOUD_ROO
 python3 "$native_root/scripts/check-firebase-auth-only.py"
 bash "$native_root/scripts/test-archlife-backend.sh"
 bash "$native_root/scripts/test-offline-queue.sh"
+python3 "$native_root/scripts/test-offline-queue-mutations.py"
 cd "$cloud_root"
 node scripts/run-wutzup-e2e.mjs --native "$native_root" "$@"

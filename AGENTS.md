@@ -5,7 +5,7 @@ backend belongs to the existing Archlife TypeScript API and private PostgreSQL
 namespace. Firebase remains the existing identity provider. Preserve this
 architecture when changing the app.
 
-Last source audit: **22 October 2026**. Dates, deployment status, installed tools,
+Last source audit: **23 October 2026**. Dates, deployment status, installed tools,
 credentials and historical test counts are observations, not permanent facts.
 Recheck the relevant source and environment before relying on them.
 
@@ -31,6 +31,7 @@ Recheck the relevant source and environment before relying on them.
 
 Read [the migration contract](docs/backend-migration.md),
 [native verification notes](docs/backend-verification.md),
+[the integrated release workflow](docs/release-testing.md),
 [the app manifest](archlife-app.json), and the files that implement the requested
 behavior. The runtime's [AGENTS.md](../../archlife-apps-runtime/AGENTS.md) applies
 when working in that repository. Read any additional instructions in each owning
@@ -237,11 +238,15 @@ emulator fixtures.
   or tutor message must recover on retry without another provider call, including
   when a daily quota has subsequently been exhausted.
 
-**Account-switch risk to verify:** the current offline queue uses the global
-UserDefaults key `offlineMessageQueue`, and the app uses shared cache/singleton
-services. Do not infer per-account queue/cache isolation from API membership
-checks. Inspect and test pending sends, SwiftData display state and logout/login
-between two accounts before claiming native cross-account isolation.
+**Account-owned local state:** AppState activates queue v2 with the authenticated
+UID, hides it on logout and retries only that owner's messages. Late responses
+cannot drain the next account's queue. DraftManager instances bind to the account
+that opened their view. The old unowned `offlineMessageQueue` and
+`wutzup_message_drafts` values are retained for explicit recovery and never
+assigned to a newly signed-in account. Run focused queue/draft regressions,
+mutations and the native account-switch scenario after changing this lifecycle.
+Shared cache/listener behavior still needs authorization and cancellation checks;
+server membership alone cannot establish native privacy.
 
 ## TypeScript API and AI workflows
 
@@ -525,6 +530,8 @@ From this repository:
 ```sh
 python3 scripts/check-firebase-auth-only.py
 bash scripts/test-archlife-backend.sh
+bash scripts/test-offline-queue.sh
+python3 scripts/test-offline-queue-mutations.py
 WUTZUP_DERIVED_DATA_PATH=/tmp/wutzup-archlife-derived bash build.sh
 ```
 
@@ -534,6 +541,13 @@ It is not an authenticated full-app UI test. For UI/state/lifecycle changes,
 add relevant automated coverage and record simulator/device QA: identity,
 offline/reconnect, error/retry, lifecycle cancellation, accessibility/VoiceOver,
 Dynamic Type, keyboard behavior, and phone/tablet layouts as applicable.
+
+The integrated signed-in simulator workflow is `bash scripts/test-archlife-e2e.sh`.
+It creates its own Auth emulator, HTTPS test CA, Docker PostgreSQL/Hasura/MinIO
+and simulator, using the real app project. Explicit `--embedded` replaces Hasura
+and objects with PGlite/in-memory storage for hosted macOS CI; the Linux Docker
+gate remains independently required. Read `docs/release-testing.md` before use.
+Never erase an existing simulator or relax Release transport checks for testing.
 
 ### API, validation, authorization or AI changes
 
@@ -555,6 +569,9 @@ yarn test:wutzup:integration
 yarn test:wutzup:acceptance
 yarn test:wutzup:mutation
 yarn test:wutzup:auth
+yarn test:wutzup:e2e
+yarn check:wutzup:security
+yarn test:wutzup:release /absolute/path/to/wutzup-swift
 ```
 
 `test:wutzup:integration` exercises actual SQL in PGlite plus HTTP-to-SQL behavior.
@@ -596,8 +613,15 @@ DEV/PROD plus blue/green propagation and replay without exposing values.
 
 ### CI and evidence boundaries
 
-- Native: `.github/workflows/archlife-backend.yml` runs the boundary guard,
-  standalone Swift contracts and full simulator build on macOS.
+- Native: `.github/workflows/archlife-backend.yml` runs the strict Auth/Core
+  dependency guard, Debug/Release contracts and builds, queue/draft regressions
+  and five queue/privacy mutations on macOS.
+- Joint release: cloud `wutzup-api-e2e` runs actual Docker Hasura/Postgres/S3 and
+  the critical dependency gate; `wutzup-swift-e2e` checks out the public native
+  candidate and runs the real app UI with explicit embedded infrastructure plus
+  its Release build. Both block the existing deployment webhook. Publish matching
+  native changes before requesting this joint gate; manual dispatch accepts an
+  exact `wutzup_native_ref`. Local results do not prove remote CI passed.
 - Cloud: `.github/workflows/archlife-runtime-deploy.yml` includes Wutzup build,
   strict types, formatting, parity, tests, mutations, BDD and Auth emulation as
   well as other apps' gates; optional paid evaluations are separate.
@@ -670,8 +694,8 @@ forms. Check current source before using any of these operational paths.
 | Media failure / broken images | S3 config/reachability, matching renderer origin, capability metadata, valid HTTP image bytes; never cache an error body or fall back to legacy Firebase Storage |
 | `push_configured: false` | All three APNs variables in the actual server environment; Team ID alone is insufficient |
 | APNs rejection / no device delivery | Key ID/team/private key pair, signed bundle entitlement, sandbox/production token, token registration timing, SQL outbox leases/retries and device permission |
-| Native binary described as Firebase Auth-only | Current source imports use Core/Auth, but Xcode still links `FirebaseFunctions` and `FirebaseCrashlytics`. The boundary script rejects Firestore/Storage/Messaging/Analytics, not these residual linked products. Do not claim every non-Auth SDK was removed; review cleanup with a build/regression check when in scope |
-| Native offline account isolation | Global queue key and shared local state need explicit account-switch tests; server membership checks alone do not prove this property |
+| Native Firebase boundary regresses | Xcode links Auth only; `check-firebase-auth-only.py` allowlists Auth/Core imports and Firebase products. Functions/Crashlytics links were removed with the release tests; rebuild and run the guard after dependency edits |
+| Native offline account isolation | Queue v2 preferences are account-owned and activated by AppState; drafts bind to the view's original account. Old unowned queue/draft keys are retained for explicit recovery, never reassigned. Run queue regressions/mutations and the account-switch UI scenario; check cancellation and acknowledgements across awaits |
 | Old build resolves the previous checkout path | Use `build-archlife/` or an isolated `WUTZUP_DERIVED_DATA_PATH`; preserve valuable existing caches/data |
 | Whole-repository checks fail outside this change | Historical OpenJob unit failures, dependency audit findings, Rust formatting drift and Swift warnings are documented in the runtime report. Reproduce current failures, identify ownership and report them; do not call the whole suite green or silently suppress them |
 

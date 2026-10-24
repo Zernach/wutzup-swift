@@ -319,3 +319,8 @@ This project is private and intended for portfolio/educational purposes. All rig
 [⬆ Back to Top](#-wutzup---real-time-ios-messaging-app)
 
 </div>
+
+
+For the integrated Swift and TypeScript release gauntlet, run
+`bash scripts/test-archlife-e2e.sh` and follow
+[release verification](docs/release-testing.md).

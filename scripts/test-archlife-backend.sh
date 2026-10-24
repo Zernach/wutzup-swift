@@ -14,3 +14,5 @@ swiftc -DDEBUG Wutzup/Services/WutzupRequestTransport.swift \
   Wutzup/Services/Protocols/AIService.swift \
   tests/ArchlifeTransportTests.swift -o "$test_binary"
 "$test_binary" tests/fixtures/archlife-api.json
+swiftc Wutzup/Services/WutzupRequestTransport.swift tests/ReleaseTransportTests.swift -o "$test_binary"
+"$test_binary"

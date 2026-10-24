@@ -238,6 +238,7 @@ struct UserListView: View {
                                 Spacer()
                             }
                             .padding(.vertical, 4)
+                            .contentShape(Rectangle())
                         }
                         .accessibilityIdentifier("recipient.\(user.id)")
                         .buttonStyle(.plain)

@@ -37,3 +37,11 @@ No deployment, live target import, remote vault publication, Firebase retirement
 or billing/IAM change occurred. A real signed-in native journey, independent
 session reload, cross-user denial, actual S3 media, physical-device APNs and
 backup/restore remain release gates. See [migration ownership](backend-migration.md).
+
+
+## Integrated release gate (23 October 2026)
+
+The repeatable Auth/HTTPS/Hasura/S3/Swift UI workflow now lives in
+[release-testing.md](release-testing.md). Use its commands and CI requirements
+for new releases; earlier standalone checks below describe their historical scope.
+The dated runtime release report records executed results and external blockers.
