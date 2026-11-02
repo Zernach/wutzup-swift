@@ -105,6 +105,12 @@ retained for explicit recovery, never assigned to the next signed-in account.
 
 ## CI and release boundaries
 
+The standalone native `.github/workflows/archlife-backend.yml` is now manual
+(`workflow_dispatch`). Run its guard, transport, queue/mutation and Debug/Release
+build commands locally for routine changes. The cloud's joint native/API release
+jobs remain mandatory before its existing push-triggered deployment webhook.
+See the runtime's [workspace local-check policy](../../../archlife-apps-runtime/docs/LOCAL_CHECKS.md).
+
 Cloud `.github/workflows/archlife-runtime-deploy.yml` requires both
 `wutzup-api-e2e` (Linux, actual infrastructure and critical dependency gate) and
 `wutzup-swift-e2e` (macOS, explicit embedded mode and matching native Release build)
