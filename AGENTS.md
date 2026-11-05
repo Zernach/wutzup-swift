@@ -315,7 +315,8 @@ excludes the sender/tutors as appropriate and clears invalid tokens conditionall
 The worker does not claim jobs when push is unconfigured.
 
 Debug registers sandbox and non-Debug registers production. The checked-in
-entitlements currently specify `development`; verify the actual signed entitlement,
+`aps-environment` entitlement resolves through `WUTZUP_APNS_ENVIRONMENT` to
+`development` in Debug and `production` in Release. Verify the actual signed entitlement,
 provisioning profile, bundle ID, token environment and target Apple endpoint for
 device/TestFlight releases. Build success cannot establish APNs delivery.
 

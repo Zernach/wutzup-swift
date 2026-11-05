@@ -112,3 +112,77 @@ Ignored native artifacts are in `.state/app-store-release/`, including
 archive log. Backend evidence is in
 `services/typescript-cloud/.state/wutzup-app-store-20261104/` and
 `.state/wutzup-e2e/`. Exports and capabilities remain private and untracked.
+
+## Signed 2.0.0 attempt, 5 November 2026
+
+A fresh Release device archive of source
+`680200ed5bd380ea2c8c2809f363d59592daa978` was attempted with the existing
+`org.archlife.wutzup` identity, version `2.0.0`, build `2`, team `5JRT57XQ6N`,
+and `-allowProvisioningUpdates`. Xcode exited 65 with `No Accounts` and no
+provisioning profile for this bundle. The log is retained at
+`.state/app-store-release/v2-signed-20261105/archive.log`. No signed archive or
+IPA was produced or uploaded. The earlier Apple agreement finding above was
+not reverified because Computer Use was unavailable.
+
+The request includes Android. This checkout contains the SwiftUI iOS client;
+no Android client was found in the workspace or the connected GitHub account.
+An existing Android repository must be supplied, or an Android client must be
+implemented before an Android release is possible. The available Google Play
+credential catalog covers Translate Wallpaper, not Wutzup.
+
+The [four-target release status](../../class-escolar/@docs/MOBILE_RELEASE_2026-11-05.md)
+records the current blockers and resume requirements. No tests, live import,
+backend deployment, credential creation, Git publication, or store submission
+occurred in this attempt.
+
+## Signed App Store candidate, 5 November 2026 follow-up
+
+Wutzup **2.0.0 (2)** now has a signed App Store archive and exported IPA.
+Apple's live build history showed no existing `2.0.0 (2)` upload. The exact
+candidate uses source commit `680200ed5bd380ea2c8c2809f363d59592daa978` plus
+the APNs entitlement correction in the working tree; the source fingerprint is
+recorded in the artifact receipt. Debug now resolves `aps-environment` to
+`development`, Release to `production`, and the unsupported duplicate
+`com.apple.developer.aps-environment` key was removed.
+
+The Release device archive was compiled locally with Xcode 27.0 / iOS 27.0 SDK.
+Its archive transfer SHA-256 was checked on the Mac mini. Signing and Xcode
+App Store export then ran on the Mini using the existing dedicated Keychain,
+without exporting its private distribution key. The first headless signature
+attempt failed with `errSecInternalComponent`; unlocking the Keychain and
+authorizing its existing signing key in the same SSH session resolved it.
+
+- Apple team: `5JRT57XQ6N` (Landscape Supply Inc.).
+- App Store app: `6754276286`; bundle: `org.archlife.wutzup`.
+- Distribution certificate: `32F8U2463F`.
+- App Store provisioning profile: `CDNG6N3793`, UUID
+  `16b8d40d-0a92-4d7e-8e30-07bcaff84f8e`.
+- Local IPA: `.state/app-store-release/signed-20261105/Wutzup-2.0.0-2.ipa`.
+- IPA SHA-256: `c81652a9ea878ac50a354592c183967e9e84ccd445d325e623f68c5a0a45335b`.
+- Local evidence: `.state/app-store-release/signed-20261105/build-receipt.json`.
+- Signed archive on the Mini:
+  `~/.local/share/wutzup-release/runs/2.0.0-2-20261105/Wutzup-2.0.0-2.xcarchive`.
+  The local archive of that name is the unsigned compilation input.
+
+Validation passed: Firebase Auth-only boundary, Debug/Release native transport
+and executed-PostgreSQL response contracts, plist syntax, Release archive,
+signed archive verification, Xcode App Store IPA export, matching transferred
+IPA checksum, and local `codesign --verify --deep --strict` on the exported app.
+The final packaged app/profile agree on team, bundle, version/build and
+production APNs; `get-task-allow` is false and the profile has no device list.
+The actual packaged Release API is `https://api.archlife.org/api/wutzup`.
+
+No upload, TestFlight processing, review submission or publication occurred.
+This signing result does not verify or complete the historical-data cutover,
+live authenticated journeys, server APNs configuration, physical-device push,
+or backup restoration described above. Those remain distribution-readiness
+checks. Class Escolar signing remains blocked by its separate new-organization
+prerequisites; see the paired release status.
+
+The owner later clarified that Wutzup and Class Escolar are separate apps owned
+by the same organization. The earlier separate-team restriction is superseded.
+Class Escolar `org.archlife.classescolar` **2.0.0 (3)** has now been signed under
+the same team `5JRT57XQ6N`, using its own profile and Keychain access group. The
+Wutzup IPA above remains unchanged and its checksum was reverified. See the
+paired release record for both candidates and the Class Escolar store-record
+step that remains before upload. Neither candidate was uploaded.
