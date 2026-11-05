@@ -468,7 +468,11 @@ This project demonstrates:
 ---
 
 **Project**: Wutzup iOS Messaging App  
-**Version**: 1.0.0-MVP  
+**Current release target**: 2.0.0
 **Architecture**: MVVM + Firebase  
 **License**: Private/Portfolio Project
 
+
+These are historical MVP notes. For the current Swift/Archlife architecture and
+release evidence, see [the agent guide](AGENTS.md) and
+[release preparation](docs/app-store-release-2026-11-04.md).

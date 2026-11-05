@@ -354,5 +354,9 @@ If you encounter issues:
 
 **Created**: October 21, 2025  
 **Last Updated**: October 21, 2025  
-**Version**: 1.0.0
+**Current release target**: 2.0.0
 
+
+These are historical MVP notes. For the current Swift/Archlife architecture and
+release evidence, see [the agent guide](AGENTS.md) and
+[release preparation](docs/app-store-release-2026-11-04.md).

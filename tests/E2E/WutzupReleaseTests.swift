@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 @MainActor
 final class WutzupReleaseTests: XCTestCase {
@@ -69,12 +70,17 @@ final class WutzupReleaseTests: XCTestCase {
             field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
         }
         if field.elementType == .secureTextField {
-            field.typeText(String(value.prefix(1)))
-            if app.buttons["Fill Strong Password"].waitForExistence(timeout: 1) {
-                let close = app.buttons["Close"].firstMatch
-                if close.exists { close.tap() }
-            }
-            field.typeText(String(value.dropFirst()))
+            // AutoFill can intercept synthetic keystrokes in a new-password field.
+            // Paste the known fixture through the real edit menu, then restore the
+            // disposable simulator's clipboard. Registration/login verify the input.
+            let clipboard = UIPasteboard.general.items
+            defer { UIPasteboard.general.items = clipboard }
+            UIPasteboard.general.string = value
+            field.press(forDuration: 1)
+            let paste = app.menuItems["Paste"].exists
+                ? app.menuItems["Paste"] : app.buttons["Paste"].firstMatch
+            XCTAssertTrue(paste.waitForExistence(timeout: 5))
+            paste.tap()
         } else {
             if !value.isEmpty { field.typeText(value) }
             let actual = field.value as? String ?? ""

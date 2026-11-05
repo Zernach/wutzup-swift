@@ -96,6 +96,14 @@ Do not point either cache at valuable user-created outputs. Hard termination can
 interrupt normal cleanup; inspect the exact owned IDs before any manual cleanup.
 Never use broad Docker prune or erase unrelated simulators.
 
+The native runner selects the newest installed iOS simulator runtime by default.
+To explicitly verify another installed runtime, set
+`WUTZUP_E2E_SIMULATOR_RUNTIME=com.apple.CoreSimulator.SimRuntime.iOS-26-0`
+before running the native gate. An unavailable identifier fails the run. Each
+invocation still creates and cleans up its own simulator; this never selects an
+existing personal device. Report the selected runtime and any failed runtime
+separately. A passing alternate runtime does not establish that a failed one works.
+
 `bash scripts/test-offline-queue.sh` checks owner isolation, exact retry IDs,
 synchronous acknowledgement persistence, suspended sends, bounded failures,
 relaunch and legacy-data retention. `python3 scripts/test-offline-queue-mutations.py`
