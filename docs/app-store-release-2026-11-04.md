@@ -1,5 +1,37 @@
 # Wutzup 2.0.0 (2) release preparation
 
+## App Review submission, 6 November 2026
+
+The signed 2.0.0 (2) candidate recorded below was uploaded from the Mac mini
+without rebuilding or changing its bytes. Apple accepted and processed it as
+`VALID`, build ID `d8244504-92d7-433e-bd4c-f0c27b94abb7`. Version
+`224829e4-5f42-42ad-8206-44968a0e0edc` and review submission
+`13030533-2b15-4cf9-b740-a27c7ff10e0f` returned `WAITING_FOR_REVIEW` at
+`2026-11-06T03:19:17Z`. Release type is `MANUAL`; no public rollout occurred.
+
+The existing listing, screenshots, privacy declarations, reviewer contact and
+demo account were preserved. Apple's missing `socialMedia` age-rating answer
+was explicitly set false: the current client has direct/group messaging without
+a public content feed. Its existing `messagingAndChat: true` answer remains.
+The precise distinction and Apple reference are in the shared workflow below.
+
+Repeat with `bash scripts/mobile-release.sh status|upload|submit|release`.
+The shared [submission tool](../../../mac-mini-bootstrap/docs/mobile-releases.md)
+uses bootstrap's `config/mobile-releases/wutzup-2.0.0.json` to pin this IPA's
+SHA-256, certificate, team, app, version/build and release notes. A second
+`bash scripts/mobile-release.sh release` completed successfully, reusing the
+existing build and review submission without another upload or store mutation.
+`--plan` selects a future version's explicit plan; `MAC_MINI_BOOTSTRAP_ROOT`
+overrides the bootstrap checkout. Receipts exist on both Macs at
+`~/.local/share/archlife-mobile-release/receipts/org.archlife.wutzup/2.0.0/2-ios.json`.
+
+The shared release regression checks and bootstrap normal suite passed. No app
+code, backend deployment, historical-data import, server APNs configuration,
+device QA, backup restoration or public launch occurred in this follow-up.
+Those distribution-readiness checks below remain distinct from App Review.
+
+## Earlier preparation evidence (historical)
+
 Observed 4 November 2026. This is preparation evidence, not a published release.
 
 Release target updated on 5 November 2026 to **2.0.0, build 2** across Debug,

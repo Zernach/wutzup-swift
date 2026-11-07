@@ -705,3 +705,18 @@ completion. At handoff state what changed, why, how it was verified, which live
 layers remain unrun and which external blockers remain. Update this guide when
 changing a contract, path, environment, command or operational boundary, and keep
 private payloads/credentials out of the documentation.
+
+## Artifact-bound store operations
+
+`bash scripts/mobile-release.sh status|upload|submit|release` delegates to the
+shared bootstrap store tool. `MAC_MINI_BOOTSTRAP_ROOT` selects that checkout;
+`--plan` selects an explicit release plan. The default current plan is
+`config/mobile-releases/wutzup-2.0.0.json` there. Plans pin a previously signed
+Mini-local IPA and its checksum; store commands never rebuild or choose the
+latest build. They preserve manual public release and save provider receipts on
+both Macs. See the [shared workflow](../../mac-mini-bootstrap/docs/mobile-releases.md).
+Store upload/review requires the user's authorization; the November 6 task
+authorized 2.0.0 (2), which reached `WAITING_FOR_REVIEW`. A future version uses
+its own reviewed plan and authorization. Review submission and Apple's approval
+do not establish live cutover, device QA, APNs, backup restoration or public
+rollout readiness. Preserve those release checks above.
